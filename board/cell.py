@@ -1,4 +1,3 @@
-from pieces.piece import PieceType
 from pieces.piece import Piece
 
 
@@ -21,6 +20,9 @@ class Cell:
         return self.col
 
     def print_cell(self):
-        line = self.cell_piece.as_string if ((self.col > 1) and (self.col < 8)) else "|{}|".format(
+        line = self.cell_piece.as_string if (self.col == 1) else "|{}".format(
             self.cell_piece.as_string)
-        print(line, end="")
+        if self.col == 8:
+            print(line)
+        else:
+            print(line, end="")

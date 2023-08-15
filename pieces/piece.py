@@ -16,7 +16,7 @@ class Piece:
         self.color = color
         self.piece_type = PieceType.EMPTY
         self.value = 0
-        self.as_string = ' '
+        self.as_string = '     '
 
     def is_empty(self):
         return self.piece_type is PieceType.EMPTY

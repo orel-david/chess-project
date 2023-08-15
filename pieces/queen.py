@@ -1,4 +1,4 @@
-import piece
+from pieces import piece
 
 
 class Queen(piece.Piece):

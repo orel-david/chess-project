@@ -71,3 +71,4 @@ class Board:
 
             if row != self.board[-1]:
                 print("-" * 20)
+
