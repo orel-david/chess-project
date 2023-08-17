@@ -42,6 +42,7 @@ class Board:
                     PieceType.KING: [], PieceType.ROOK: []}
     white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
                     PieceType.KING: [], PieceType.ROOK: []}
+    en_passant_ready = None
 
     # In the future maybe add support for fen and pgn as init method
     def __init__(self):
