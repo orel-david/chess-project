@@ -6,7 +6,7 @@ class King(piece.Piece):
         super().__init__(color)
         self.value = 9
         self.piece_type = piece.PieceType.KING
-        self.as_string = "♔" if color else "♚"
+        self.as_string = "♚" if color else "♔"
         self.moves = []
         self.moved = False
         self.moves.append((0, 1))

@@ -43,6 +43,7 @@ class Board:
     white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
                     PieceType.KING: [], PieceType.ROOK: []}
     en_passant_ready = None
+    count = 0
 
     # In the future maybe add support for fen and pgn as init method
     def __init__(self):
@@ -93,10 +94,18 @@ class Board:
     def get_pieces_dict(self, is_white):
         return self.white_pieces if is_white else self.black_pieces
 
+    def is_insufficient(self):
+        if self.white_pieces[PieceType.PAWN] == [] and self.black_pieces[PieceType.PAWN] == []:
+            if len(self.white_pieces[PieceType.ROOK] + self.white_pieces[PieceType.QUEEN]) == 0 and len(
+                    self.white_pieces[PieceType.BISHOP] + self.white_pieces[PieceType.KNIGHT]) <= 1:
+                return len(self.black_pieces[PieceType.ROOK] + self.black_pieces[PieceType.QUEEN]) == 0 and len(
+                    self.black_pieces[PieceType.BISHOP] + self.black_pieces[PieceType.KNIGHT]) <= 1
+        return False
+
     def print_board(self):
-        for row in self.board:
+        for row in reversed(self.board):
             for cell in row:
                 cell.print_cell()
 
-            if row != self.board[-1]:
+            if row != self.board[0]:
                 print("-" * 20)

@@ -6,7 +6,7 @@ class Pawn(piece.Piece):
         super().__init__(color)
         self.value = 1
         self.piece_type = piece.PieceType.PAWN
-        self.as_string = "♙" if color else "♟"
+        self.as_string = "♟" if color else "♙"
         self.en_passant = False
         self.start = True
         self.moves = [(1, 0)]

@@ -6,7 +6,7 @@ class Rook(piece.Piece):
         super().__init__(color)
         self.value = 5
         self.piece_type = piece.PieceType.ROOK
-        self.as_string = "♖" if color else "♜"
+        self.as_string = "♜" if color else "♖"
         self.moved = False
         self.moves = []
         self.moves.append((0, 1))

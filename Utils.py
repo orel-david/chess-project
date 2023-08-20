@@ -2,6 +2,10 @@ from board import Board
 from cell import Cell
 from chess_exceptions import NonLegal, KingUnderCheck, KingNonLegal, KingSacrifice
 from pieces.piece import PieceType, Piece
+import pieces
+
+constructor_dict = {PieceType.QUEEN: pieces.queen.Queen, PieceType.ROOK: pieces.rook.Rook,
+                    PieceType.KNIGHT: pieces.knight.Knight, PieceType.BISHOP: pieces.bishop.Bishop}
 
 
 class Move:
@@ -9,16 +13,21 @@ class Move:
     col: int
     castle: bool
     is_king_side: bool
+    promotion: PieceType
 
     def __init__(self, row, col):
         self.row = row
         self.col = col
         self.castle = False
         self.is_king_side = False
+        self.promotion = PieceType.EMPTY
 
     def set_castle(self, is_right):
         self.castle = True
         self.is_king_side = is_right
+
+    def set_promotion(self, piece):
+        self.promotion = piece
 
 
 def en_passant_check(board: Board, pawn, row: int, col: int):
@@ -30,13 +39,15 @@ def en_passant_check(board: Board, pawn, row: int, col: int):
         return False
     if (cell.is_white() ^ pawn.is_white()) and (
             cell.get_cell_type() == PieceType.PAWN):
-        return True if cell.en_passant else False
+        return True if cell.get_cell_piece().en_passant else False
 
 
 def validate_move(board: Board, cell, move):
+    if board.get_cell(move.row, move.col) is None:
+        return False
     eat = (board.get_cell(move.row, move.col).is_white() ^ cell.is_white())
     free = board.get_cell(move.row, move.col).is_empty()
-    return (not (board.get_cell(move.row, move.col) is None)) and (free or eat)
+    return free or eat
 
 
 def get_line_moves(board: Board, cell: Cell, directions):
@@ -67,13 +78,13 @@ def get_pawn_moves(board: Board, cell: Cell):
 
     moves += filter(lambda move: (not (board.get_cell(move.row, move.col) is None)) and (
             board.get_cell(move.row, move.col).is_white() ^ cell.is_white() and (
-        not board.get_cell(move.row, move.col).is_empty())),
-                    [Move(cell_row + pawn_advancement, cell_col() + 1),
-                     Move(cell_row() + pawn_advancement, cell_col() - 1)])
+                not board.get_cell(move.row, move.col).is_empty())),
+                    [Move(cell_row + pawn_advancement, cell_col + 1),
+                     Move(cell_row + pawn_advancement, cell_col - 1)])
 
     moves += filter(lambda move: en_passant_check(board, cell.cell_piece, move.row, move.col),
-                    [Move(cell_row(), cell_col() + 1),
-                     Move(cell_row(), cell_col() - 1)])
+                    [Move(cell_row + pawn_advancement, cell_col + 1),
+                     Move(cell_row + pawn_advancement, cell_col - 1)])
 
     return list(moves)
 
@@ -135,16 +146,20 @@ def get_all_normal_moves(board: Board, cell: Cell):
 
 
 def is_legal(board: Board, cell: Cell, move: Move):
-    return move in get_all_normal_moves(board, cell)
+    moves = get_all_normal_moves(board, cell)
+    for m in moves:
+        if m.row == move.row and move.col == m.col:
+            return True
+    return False
 
 
 def is_threatened(board: Board, is_white: bool, cell: Cell):
     enemy_pieces = board.get_pieces_dict(not is_white)
     for piece in enemy_pieces:
-        for enemy in piece:
+        for enemy in enemy_pieces[piece]:
             if is_legal(board, enemy, Move(cell.get_row(), cell.get_col())):
-                return False
-    return True
+                return True
+    return False
 
 
 def is_under_check(board: Board, is_white: bool):
@@ -152,8 +167,36 @@ def is_under_check(board: Board, is_white: bool):
     return is_threatened(board, is_white, king_cell)
 
 
+def is_mate(board: Board, is_white: bool):
+    if not is_under_check(board, is_white):
+        return False
+    mate = False
+    piece_dict = board.get_pieces_dict(is_white)
+    # Add case for defending piece
+
+    for piece in piece_dict.keys():
+        for cell in piece_dict[piece]:
+            block_moves = get_all_normal_moves(board, cell)
+            for move in block_moves:
+                curr_cell = board.get_cell(move.row, move.col)
+                prev_piece = curr_cell.get_cell_piece()
+                curr_cell.cell_piece = cell.cell_piece
+                cell.cell_piece = Piece(False)
+                result = is_under_check(board, is_white)
+                cell.cell_piece = curr_cell.cell_piece
+                curr_cell.cell_piece = prev_piece
+                if not result:
+                    return False
+
+    moves = get_all_normal_moves(board, board.get_pieces_dict(is_white)[PieceType.KING][0])
+    mate = all(is_threatened(board, is_white, board.get_cell(m.row, m.col)) for m in moves)
+    return mate
+
+
 def castle(board: Board, is_white: bool, move: Move):
     if move.castle is False:
+        return
+    if is_under_check(board, is_white):
         return
 
     row = 1 if is_white else 8
@@ -185,7 +228,7 @@ def castle(board: Board, is_white: bool, move: Move):
 
 def check_protect(board: Board, cell: Cell):
     if cell.get_cell_type() == PieceType.KING:
-        return True
+        return False
 
     piece = cell.get_cell_piece()
     cell.cell_piece = Piece(False)
@@ -200,23 +243,33 @@ def update_en_passant(board: Board):
         board.en_passant_ready = None
 
 
-def update_piece(board: Board, cell: Cell, move: Move):
+def update_piece(board: Board, cell: Cell, move: Move, origin_cell: Cell):
     if cell.get_cell_type() == PieceType.KING or cell.get_cell_type() == PieceType.ROOK:
         cell.get_cell_piece().moved = True
 
     if cell.get_cell_type() == PieceType.PAWN:
+        board.count = 0
         pawn = cell.get_cell_piece()
         pawn.start = False
-        pawn.en_passant = True if abs(cell.get_row() - move.row) == 2 else False
+        pawn.en_passant = True if abs(origin_cell.get_row() - move.row) == 2 else False
         if pawn.en_passant:
             board.en_passant_ready = pawn
+    board.count = board.count + 1
+
+
+def promote(board: Board, cell: Cell, move: Move):
+    if move.promotion == PieceType.EMPTY:
+        raise NonLegal
+    if cell.get_cell_type() != PieceType.PAWN:
+        raise NonLegal
+
+    piece = constructor_dict[move.promotion](Cell.is_white())
+    cell.cell_piece = piece
 
 
 def make_move(board: Board, cell: Cell, move: Move):
     if move.castle:
         castle(board, cell.is_white(), move)
-
-    # TODO: ADD PROMOTION CASE
 
     if not is_legal(board, cell, move):
         raise NonLegal()
@@ -232,21 +285,26 @@ def make_move(board: Board, cell: Cell, move: Move):
     if check_protect(board, cell):
         raise KingSacrifice()
 
+    if move.promotion != PieceType.EMPTY:
+        promote(board, cell, move)
+
     target_cell = board.get_cell(move.row, move.col)
     if target_cell.get_cell_type() != PieceType.EMPTY:
+        board.count = 0
         pieces_dict = board.get_pieces_dict(target_cell.is_white())
-        pieces_dict[cell.get_cell_type()].remove(target_cell)
-
+        pieces_dict[target_cell.get_cell_type()] = [c for c in pieces_dict[target_cell.get_cell_type()] if
+                                                    c != target_cell]
     pieces_dict = board.get_pieces_dict(cell.is_white())
-    pieces_dict[PieceType.ROOK] = [target_cell if c == cell else c for c in
-                                   pieces_dict[cell.get_cell_type()]]
+    pieces_dict[cell.get_cell_type()] = [target_cell if c == cell else c for c in pieces_dict[cell.get_cell_type()]]
     target_cell.cell_piece = cell.get_cell_piece()
     cell.cell_piece = Piece(False)
     update_en_passant(board)
-    update_piece(board, cell, move)
+    update_piece(board, target_cell, move, cell)
 
 
 def translate_algebraic_notation_move(notation: str):
+    pieces_dict = {'q': PieceType.QUEEN, 'r': PieceType.ROOK, 'b': PieceType.BISHOP, 'n': PieceType.KNIGHT}
+
     if notation.lower() == "o-o":
         move = Move(0, 0)
         move.set_castle(True)
@@ -256,6 +314,22 @@ def translate_algebraic_notation_move(notation: str):
         move = Move(0, 0)
         move.set_castle(False)
         return move
-    # TODO: ADD PROMOTION CASE
+
+    if len(notation) == 3:
+        if notation[0] in pieces_dict.keys():
+            move = Move(int(notation[2]), ord(notation[1].lower()) - ord('a') + 1)
+            move.set_promotion(pieces_dict[notation[0]])
+            return move
+        raise NonLegal
+
+    if len(notation) != 2:
+        raise NonLegal
 
     return Move(int(notation[1]), ord(notation[0].lower()) - ord('a') + 1)
+
+
+def check_stalemate(board: Board):
+    if board.count >= 50:
+        return True
+
+    return board.is_insufficient()

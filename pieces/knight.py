@@ -6,7 +6,7 @@ class Knight(piece.Piece):
         super().__init__(color)
         self.value = 3
         self.piece_type = piece.PieceType.KNIGHT
-        self.as_string = "♘" if color else "♞"
+        self.as_string = "♞" if color else "♘"
         self.moves = [(2, 1), (2, -1), (-2, 1), (-2, -1),
                       (1, 2), (-1, 2), (1, -2), (-1, -2)]
 
