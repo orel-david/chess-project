@@ -14,8 +14,10 @@ def get_input():
 
 
 def print_winner(is_white):
-    if is_white:
+    if not is_white:
         print("White won the game")
+    else:
+        print("Black won the game")
 
 
 def print_stalemate():
@@ -31,8 +33,12 @@ def game():
         gameboard.print_board()
         try:
             user_input = get_input()
-            origin_cell = gameboard.get_cell(user_input[0].row, user_input[0].col)
 
+            if type(user_input) is Utils.Move:
+                Utils.castle(gameboard, is_white, user_input)
+                continue
+
+            origin_cell = gameboard.get_cell(user_input[0].row, user_input[0].col)
             if origin_cell is None:
                 continue
 
@@ -55,6 +61,7 @@ def game():
         except KingNonLegal:
             print("You can't sacrifice your king, try again")
 
+    gameboard.print_board()
     if Utils.is_mate(gameboard, is_white):
         print_winner(is_white)
     else:
