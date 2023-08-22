@@ -36,6 +36,7 @@ def game():
 
             if type(user_input) is Utils.Move:
                 Utils.castle(gameboard, is_white, user_input)
+                is_white = not is_white
                 continue
 
             origin_cell = gameboard.get_cell(user_input[0].row, user_input[0].col)
