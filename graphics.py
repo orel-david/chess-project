@@ -1,3 +1,5 @@
+import sys
+
 import pygame
 from board import Board
 from pieces.piece import PieceType
@@ -30,24 +32,23 @@ class GUI:
         self.board_image = pygame.image.load("images/empty-board.png")
         self.board_image = pygame.transform.scale(self.board_image, (self.width, self.height))
         self.screen.blit(self.board_image, (0, 0))
-        pygame.display.flip()
+        pygame.display.update()
 
     def draw_at_cell(self, img, row: int, col: int):
         if row > 8 or col > 8 or row < 1 or col < 1:
             return
-        self.screen.blit(img, ((8 - col) * (self.width / 8), (8 - row) * (self.height / 8)))
+        self.screen.blit(img, ((col - 1) * (self.width / 8), (8 - row) * (self.height / 8)))
 
     def draw_board(self, board: Board):
+        self.screen.fill((0, 0, 0))
         self.screen.blit(self.board_image, (0, 0))
         for color in self.pieces.keys():
             pieces_dict = board.get_pieces_dict(color)
             for piece in pieces_dict.keys():
                 for cell in pieces_dict[piece]:
                     self.draw_at_cell(self.pieces[color][cell.get_cell_type()], cell.get_row(), cell.get_col())
-        pygame.display.flip()
+        pygame.display.update()
 
-    def handle_events(self, board: Board):
-        pass
 
     def draw_moves(self, board: Board):
         pass
