@@ -49,9 +49,22 @@ class GUI:
                     self.draw_at_cell(self.pieces[color][cell.get_cell_type()], cell.get_row(), cell.get_col())
         pygame.display.update()
 
+    @staticmethod
+    def handle_events(board: Board):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.WINDOWFOCUSLOST:
+                pygame.display.iconify()
+            if event.type == pygame.WINDOWFOCUSGAINED:
+                pygame.display.update()
 
     def draw_moves(self, board: Board):
         pass
 
     def mark_checks(self, board: Board):
+        pass
+
+    def end(self, result):
         pass
