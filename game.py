@@ -2,6 +2,7 @@ import Utils
 import board
 import pieces.piece
 from chess_exceptions import KingSacrifice, KingNonLegal, KingUnderCheck, NonLegal
+from graphics import GUI
 
 
 def get_input():
@@ -29,8 +30,11 @@ def game():
     print("When promoting enter in origin the pawn cell and in destination the letter of the piece")
     is_white = True
     gameboard = board.Board()
+    gui = GUI()
     while not (Utils.is_mate(gameboard, is_white) or Utils.check_stalemate(gameboard)):
+        gui.handle_events(gameboard)
         gameboard.print_board()
+        gui.draw_board(gameboard)
         try:
             user_input = get_input()
 
