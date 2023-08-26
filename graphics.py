@@ -2,9 +2,11 @@ import sys
 
 import pygame
 
+import Utils
 from Utils import Move
 from board import Board
 from cell import Cell
+from chess_exceptions import NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal
 from pieces.piece import PieceType
 
 
@@ -29,6 +31,7 @@ class GUI:
     pieces = {True: white_pieces, False: black_pieces}
     origin = None
     move = None
+    white = True
 
     def __init__(self):
         pygame.init()
@@ -38,6 +41,9 @@ class GUI:
         self.board_image = pygame.transform.scale(self.board_image, (self.width, self.height))
         self.screen.blit(self.board_image, (0, 0))
         pygame.display.update()
+
+    def is_white(self):
+        return self.white
 
     def draw_at_cell(self, img, row: int, col: int):
         if row > 8 or col > 8 or row < 1 or col < 1:
@@ -65,6 +71,8 @@ class GUI:
                 pygame.display.update()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.dict['button'] == 1:
+                    if self.move is not None:
+                        pass
                     x, y = event.dict['pos']
                     col = 1 + int((x * 8) / self.width)
                     row = 8 - int((y * 8) / self.height)
@@ -78,5 +86,36 @@ class GUI:
     def end(self, result):
         pass
 
+    def get_input(self):
+        pass
 
+    def make_move(self, board: Board, user_input):
+        try:
 
+            if type(user_input) is Utils.Move:
+                Utils.castle(board, self.white, user_input)
+                self.white = not self.white
+                return
+
+            origin_cell = board.get_cell(user_input[0].row, user_input[0].col)
+            if origin_cell is None:
+                return
+
+            if origin_cell.white() != self.white:
+                print("You must move your pieces")
+                return
+
+            if origin_cell.get_cell_type() == PieceType.EMPTY:
+                print("You can't move empty cell")
+                return
+
+            Utils.make_move(board, origin_cell, user_input[1])
+            self.white = not self.white
+        except NonLegal:
+            print("Illegal move, try again")
+        except KingSacrifice:
+            print("You can't move a locked piece, try again")
+        except KingUnderCheck:
+            print("You need to move your king out of danger, try again")
+        except KingNonLegal:
+            print("You can't sacrifice your king, try again")
