@@ -27,6 +27,8 @@ class GUI:
     white_pieces = create_image_dict(True, width, height)
     black_pieces = create_image_dict(False, width, height)
     pieces = {True: white_pieces, False: black_pieces}
+    origin = None
+    move = None
 
     def __init__(self):
         pygame.init()
@@ -52,16 +54,20 @@ class GUI:
                     self.draw_at_cell(self.pieces[color][cell.get_cell_type()], cell.get_row(), cell.get_col())
         pygame.display.update()
 
-    @staticmethod
-    def handle_events(board: Board):
+    def handle_events(self, board: Board):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.WINDOWFOCUSLOST:
+            elif event.type == pygame.WINDOWFOCUSLOST:
                 pygame.display.iconify()
-            if event.type == pygame.WINDOWFOCUSGAINED:
+            elif event.type == pygame.WINDOWFOCUSGAINED:
                 pygame.display.update()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.dict['button'] == 1:
+                    x, y = event.dict['pos']
+                    col = 1 + int((x * 8) / self.width)
+                    row = 8 - int((y * 8) / self.height)
 
     def draw_move(self, board: Board, move: Move):
         pass
@@ -71,3 +77,6 @@ class GUI:
 
     def end(self, result):
         pass
+
+
+
