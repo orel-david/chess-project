@@ -1,7 +1,10 @@
 import sys
 
 import pygame
+
+from Utils import Move
 from board import Board
+from cell import Cell
 from pieces.piece import PieceType
 
 
@@ -60,10 +63,10 @@ class GUI:
             if event.type == pygame.WINDOWFOCUSGAINED:
                 pygame.display.update()
 
-    def draw_moves(self, board: Board):
+    def draw_move(self, board: Board, move: Move):
         pass
 
-    def mark_checks(self, board: Board):
+    def mark_check(self, board: Board, cell: Cell):
         pass
 
     def end(self, result):

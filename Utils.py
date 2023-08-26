@@ -78,7 +78,7 @@ def get_pawn_moves(board: Board, cell: Cell):
 
     moves += filter(lambda move: (not (board.get_cell(move.row, move.col) is None)) and (
             board.get_cell(move.row, move.col).is_white() ^ cell.is_white() and (
-                not board.get_cell(move.row, move.col).is_empty())),
+        not board.get_cell(move.row, move.col).is_empty())),
                     [Move(cell_row + pawn_advancement, cell_col + 1),
                      Move(cell_row + pawn_advancement, cell_col - 1)])
 
@@ -263,12 +263,13 @@ def update_piece(board: Board, cell: Cell, move: Move, origin_cell: Cell):
     board.count = board.count + 1
 
 
-def promote(cell: Cell, move: Move):
+def promote(board: Board, cell: Cell, move: Move):
     if move.promotion == PieceType.EMPTY:
         raise NonLegal()
     if cell.get_cell_type() != PieceType.PAWN:
         raise NonLegal()
 
+    pieces_dict = board.get_pieces_dict(cell.is_white())
     color = cell.is_white()
     if move.promotion == PieceType.ROOK:
         piece = pieces.rook.Rook(color)
@@ -279,6 +280,8 @@ def promote(cell: Cell, move: Move):
     else:
         piece = pieces.queen.Queen(color)
     cell.cell_piece = piece
+    pieces_dict[move.promotion].append(cell)
+    pieces_dict[PieceType.PAWN] = [c for c in pieces_dict[PieceType.PAWN] if c != cell]
 
 
 def check_stops_check(board: Board, cell: Cell, move: Move):
@@ -322,7 +325,7 @@ def make_move(board: Board, cell: Cell, move: Move):
         raise KingSacrifice()
 
     if move.promotion != PieceType.EMPTY:
-        promote(cell, move)
+        promote(board, cell, move)
 
     target_cell = board.get_cell(move.row, move.col)
     if target_cell.get_cell_type() != PieceType.EMPTY:
