@@ -1,7 +1,5 @@
 import Utils
 import board
-import pieces.piece
-from chess_exceptions import KingSacrifice, KingNonLegal, KingUnderCheck, NonLegal
 from graphics import GUI
 
 
@@ -16,10 +14,10 @@ def game():
     gameboard = board.Board()
     gui = GUI()
     gui.draw_board(gameboard)
-    while not (Utils.is_mate(gameboard, gui.white()) or Utils.check_stalemate(gameboard)):
+    while not (Utils.is_mate(gameboard, gui.is_white()) or Utils.check_stalemate(gameboard)):
         gui.handle_events(gameboard)
 
-    gui.end(determine_result(gameboard, gui.white()))
+    gui.end(determine_result(gameboard, gui.is_white()))
 
 
 game()
