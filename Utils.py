@@ -199,6 +199,28 @@ def is_mate(board: Board, is_white: bool):
     return True
 
 
+def can_castle(board: Board, is_white: bool, move: Move):
+    if move.castle is False:
+        return False
+    if is_under_check(board, is_white):
+        return False
+
+    row = 1 if is_white else 8
+    col = 8 if move.is_king_side else 1
+    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
+    king = king_cell.get_cell_piece()
+    rook_cell = board.get_cell(row, col)
+    rook = rook_cell.get_cell_piece()
+    if king.moved or rook_cell.get_cell_type() != PieceType.ROOK or rook.moved:
+        return False
+
+    direction = 1 if move.is_king_side else -1
+    moves = [Move(row, 5 + direction), Move(row, 5 + 2 * direction)]
+    cond = (lambda m: board.get_cell(m.row, m.col).is_empty() and (
+        not is_threatened(board, is_white, board.get_cell(m.row, m.col))))
+    return all(cond(m) for m in moves)
+
+
 def castle(board: Board, is_white: bool, move: Move):
     if move.castle is False:
         raise NonLegal()
