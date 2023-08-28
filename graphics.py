@@ -77,6 +77,30 @@ class GUI:
                     x, y = event.dict['pos']
                     col = 1 + int((x * 8) / self.width)
                     row = 8 - int((y * 8) / self.height)
+                    if self.origin is not None:
+                        if self.origin.get_cell_type() == PieceType.KING:
+                            castling_moves = self.get_castle_moves(board)
+                            for castle in castling_moves:
+                                if castle.row == row and castle.col == col:
+                                    self.make_move(board, castle)
+                                    self.draw_board(board)
+                                    self.origin = None
+                                    self.move = None
+                                    return
+                        else:
+                            # TODO: handle promotion
+                            self.move = Move(row, col)
+                            print("target {} {}".format(self.move.row, self.move.col))
+                            self.make_move(board, (Move(self.origin.get_row(), self.origin.get_col()), self.move))
+                            self.draw_board(board)
+                            self.origin = None
+                            self.move = None
+                            return
+
+                    self.origin = board.get_cell(row, col)
+                    print("origin {} {}".format(self.origin.get_row(), self.origin.get_col()))
+                    # TODO: draw possible moves
+                    self.draw_board(board)
 
     def draw_move(self, board: Board, move: Move):
         pass
@@ -87,10 +111,19 @@ class GUI:
     def end(self, result):
         pass
 
-    def get_input(self):
-        pass
+    def get_castle_moves(self, board: Board):
+        moves = []
+        row = 1 if self.is_white() else 8
+        move_1 = Move(row, 7)
+        move_1.set_castle(True)
+        if Utils.can_castle(board, self.is_white(), move_1):
+            moves.append(move_1)
+        move_2 = Move(row, 3)
+        move_2.set_castle(False)
+        if Utils.can_castle(board, self.is_white(), move_2):
+            moves.append(move_2)
+        return moves
 
-    def make_move(self, board: Board, user_input):
     def make_move(self, board: Board, user_input: Union[Move, Tuple[Move, Move]]):
         try:
 
