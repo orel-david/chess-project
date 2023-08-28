@@ -1,4 +1,5 @@
 import sys
+from typing import Optional, Union, Tuple
 
 import pygame
 
@@ -29,12 +30,14 @@ class GUI:
     white_pieces = create_image_dict(True, width, height)
     black_pieces = create_image_dict(False, width, height)
     pieces = {True: white_pieces, False: black_pieces}
-    origin = None
-    move = None
+    origin: Optional[Cell]
+    move: Optional[Move]
     white = True
 
     def __init__(self):
         pygame.init()
+        self.origin = None
+        self.move = None
         pygame.display.set_caption("Chess game")
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.board_image = pygame.image.load("images/empty-board.png")
@@ -71,8 +74,6 @@ class GUI:
                 pygame.display.update()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.dict['button'] == 1:
-                    if self.move is not None:
-                        pass
                     x, y = event.dict['pos']
                     col = 1 + int((x * 8) / self.width)
                     row = 8 - int((y * 8) / self.height)
@@ -90,6 +91,7 @@ class GUI:
         pass
 
     def make_move(self, board: Board, user_input):
+    def make_move(self, board: Board, user_input: Union[Move, Tuple[Move, Move]]):
         try:
 
             if type(user_input) is Utils.Move:
@@ -101,7 +103,7 @@ class GUI:
             if origin_cell is None:
                 return
 
-            if origin_cell.white() != self.white:
+            if origin_cell.is_white() != self.white:
                 print("You must move your pieces")
                 return
 
