@@ -81,6 +81,12 @@ class GUI:
                     col = 1 + int((x * 8) / self.width)
                     row = 8 - int((y * 8) / self.height)
                     if self.origin is not None:
+                        cell = board.get_cell(row, col)
+                        if (not cell.is_empty()) and cell.is_white() == self.is_white():
+                            self.origin = None
+                            self.draw_board(board)
+                            return
+
                         if self.origin.get_cell_type() == PieceType.KING:
                             castling_moves = self.get_castle_moves(board)
                             for castle in castling_moves:
@@ -99,10 +105,18 @@ class GUI:
                             self.move = None
                             return
 
+                    print("white" if self.is_white() else "black")
                     self.origin = board.get_cell(row, col)
                     self.draw_board(board)
-                    self.draw_move(board, Move(row, col))
-                    # TODO: draw possible moves
+                    if self.origin.is_white() != self.is_white():
+                        self.origin = None
+                        return
+                    moves = Utils.get_all_normal_moves(board, self.origin)
+                    if self.origin.get_cell_type() == PieceType.KING:
+                        moves += self.get_castle_moves(board)
+
+                    for move in moves:
+                        self.draw_move(board, move)
 
     def draw_move(self, board: Board, move: Move):
         if move.row > 8 or move.col > 8 or move.row < 1 or move.col < 1:
