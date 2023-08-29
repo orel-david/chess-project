@@ -27,6 +27,9 @@ def create_image_dict(is_white: bool, width: int, height: int):
 class GUI:
     width = 800
     height = 800
+    alpha = 128
+    legal_color = (0, 255, 0)
+    check_color = (255, 0, 0)
     white_pieces = create_image_dict(True, width, height)
     black_pieces = create_image_dict(False, width, height)
     pieces = {True: white_pieces, False: black_pieces}
@@ -90,7 +93,6 @@ class GUI:
                         else:
                             # TODO: handle promotion
                             self.move = Move(row, col)
-                            print("target {} {}".format(self.move.row, self.move.col))
                             self.make_move(board, (Move(self.origin.get_row(), self.origin.get_col()), self.move))
                             self.draw_board(board)
                             self.origin = None
@@ -98,12 +100,22 @@ class GUI:
                             return
 
                     self.origin = board.get_cell(row, col)
-                    print("origin {} {}".format(self.origin.get_row(), self.origin.get_col()))
-                    # TODO: draw possible moves
                     self.draw_board(board)
+                    self.draw_move(board, Move(row, col))
+                    # TODO: draw possible moves
 
     def draw_move(self, board: Board, move: Move):
-        pass
+        if move.row > 8 or move.col > 8 or move.row < 1 or move.col < 1:
+            return
+        rectangle = pygame.Rect((move.col - 1) * (self.width / 8), (8 - move.row) * (self.height / 8),
+                                self.width / 8,
+                                self.height / 8)
+        surface = pygame.Surface((rectangle.width, rectangle.height), pygame.SRCALPHA)
+        cell = board.get_cell(move.row, move.col)
+        color = self.legal_color if cell.get_cell_type() == PieceType.EMPTY else (255, 255, 0)
+        surface.fill((color[0], color[1], color[2], self.alpha))
+        self.screen.blit(surface, rectangle)
+        pygame.display.update()
 
     def mark_check(self, board: Board, cell: Cell):
         pass
