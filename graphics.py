@@ -180,7 +180,7 @@ class GUI:
         pygame.display.update()
 
     def end(self, result):
-        if result == 1:
+        if result == 0:
             text = "Stalemate"
         elif result == 1:
             text = 'white won the game'
