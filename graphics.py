@@ -1,5 +1,5 @@
 import sys
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, Sequence
 
 import pygame
 
@@ -24,6 +24,20 @@ def create_image_dict(is_white: bool, width: int, height: int):
     return output_dict
 
 
+def condition(board, cell, move):
+    if Utils.is_under_check(board, cell.is_white()):
+        if not Utils.check_stops_check(board, cell, move):
+            return False
+
+    if cell.get_cell_type() == PieceType.KING:
+        if Utils.is_threatened(board, cell.is_white(), board.get_cell(move.row, move.col)):
+            return False
+
+    if not Utils.check_stops_check(board, cell, move):
+        return False
+    return True
+
+
 class GUI:
     width = 800
     height = 800
@@ -36,6 +50,7 @@ class GUI:
     origin: Optional[Cell]
     move: Optional[Move]
     white = True
+    moves: Optional[Sequence[Move]]
 
     def __init__(self):
         pygame.init()
@@ -83,8 +98,7 @@ class GUI:
                     if self.origin is not None:
                         cell = board.get_cell(row, col)
                         if (not cell.is_empty()) and cell.is_white() == self.is_white():
-                            self.origin = None
-                            self.draw_board(board)
+                            self.set_origin(board, row, col)
                             return
 
                         if self.origin.get_cell_type() == PieceType.KING:
@@ -96,27 +110,33 @@ class GUI:
                                     self.origin = None
                                     self.move = None
                                     return
-                        else:
-                            # TODO: handle promotion
-                            self.move = Move(row, col)
-                            self.make_move(board, (Move(self.origin.get_row(), self.origin.get_col()), self.move))
-                            self.draw_board(board)
-                            self.origin = None
-                            self.move = None
-                            return
+
+                        self.perform_move(board, row, col)
+                        return
 
                     print("white" if self.is_white() else "black")
-                    self.origin = board.get_cell(row, col)
-                    self.draw_board(board)
-                    if self.origin.is_white() != self.is_white():
-                        self.origin = None
-                        return
-                    moves = Utils.get_all_normal_moves(board, self.origin)
-                    if self.origin.get_cell_type() == PieceType.KING:
-                        moves += self.get_castle_moves(board)
+                    self.set_origin(board, row, col)
 
-                    for move in moves:
-                        self.draw_move(board, move)
+    def set_origin(self, board: Board, row, col):
+        self.origin = board.get_cell(row, col)
+        self.draw_board(board)
+        if self.origin.is_white() != self.is_white():
+            self.origin = None
+            return
+        moves = Utils.get_all_normal_moves(board, self.origin)
+        if self.origin.get_cell_type() == PieceType.KING:
+            moves += self.get_castle_moves(board)
+        self.moves = [m for m in moves if condition(board, self.origin, m)]
+        for move in self.moves:
+            self.draw_move(board, move)
+
+    def perform_move(self, board, row, col):
+        # TODO: handle promotion
+        self.move = Move(row, col)
+        self.make_move(board, (Move(self.origin.get_row(), self.origin.get_col()), self.move))
+        self.draw_board(board)
+        self.origin = None
+        self.move = None
 
     def draw_move(self, board: Board, move: Move):
         if move.row > 8 or move.col > 8 or move.row < 1 or move.col < 1:

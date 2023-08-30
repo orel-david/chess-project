@@ -78,7 +78,7 @@ def get_pawn_moves(board: Board, cell: Cell):
 
     moves += filter(lambda move: (not (board.get_cell(move.row, move.col) is None)) and (
             board.get_cell(move.row, move.col).is_white() ^ cell.is_white() and (
-        not board.get_cell(move.row, move.col).is_empty())),
+                not board.get_cell(move.row, move.col).is_empty())),
                     [Move(cell_row + pawn_advancement, cell_col + 1),
                      Move(cell_row + pawn_advancement, cell_col - 1)])
 
@@ -254,17 +254,6 @@ def castle(board: Board, is_white: bool, move: Move):
                                        pieces_dict[PieceType.ROOK]]
 
 
-def check_protect(board: Board, cell: Cell):
-    if cell.get_cell_type() == PieceType.KING:
-        return False
-
-    piece = cell.get_cell_piece()
-    cell.cell_piece = Piece(False)
-    result = is_under_check(board, piece.is_white())
-    cell.cell_piece = piece
-    return result
-
-
 def update_en_passant(board: Board):
     if board.en_passant_ready is not None:
         board.en_passant_ready.en_passant = False
@@ -314,18 +303,22 @@ def check_stops_check(board: Board, cell: Cell, move: Move):
     prev_piece = curr_cell.get_cell_piece()
     curr_cell.cell_piece = cell.cell_piece
     cell.cell_piece = Piece(False)
-    if curr_cell.get_cell_type() == PieceType.KING:
-        piece_dict[PieceType.KING] = [curr_cell]
+    if not curr_cell.is_empty():
+        piece_dict[curr_cell.get_cell_type()] = [c if c != cell else curr_cell for
+                                                 c in piece_dict[curr_cell.get_cell_type()]]
     if prev_piece.piece_type != PieceType.EMPTY:
         enemy_dict[prev_piece.piece_type] = [c for c in enemy_dict[prev_piece.piece_type] if
                                              c != curr_cell]
-    result = is_under_check(board, cell.is_white())
+    result = is_under_check(board, curr_cell.is_white())
     if prev_piece.piece_type != PieceType.EMPTY:
         enemy_dict[prev_piece.piece_type].append(curr_cell)
+    if not curr_cell.is_empty():
+        piece_dict[curr_cell.get_cell_type()] = [c if c != curr_cell else cell for
+                                                 c in piece_dict[curr_cell.get_cell_type()]]
     piece_dict[PieceType.KING] = [king_cell]
     cell.cell_piece = curr_cell.cell_piece
     curr_cell.cell_piece = prev_piece
-    return result
+    return not result
 
 
 def make_move(board: Board, cell: Cell, move: Move):
@@ -343,7 +336,7 @@ def make_move(board: Board, cell: Cell, move: Move):
         if is_threatened(board, cell.is_white(), board.get_cell(move.row, move.col)):
             raise KingNonLegal()
 
-    if check_protect(board, cell):
+    if not check_stops_check(board, cell, move):
         raise KingSacrifice()
 
     if move.promotion != PieceType.EMPTY:
