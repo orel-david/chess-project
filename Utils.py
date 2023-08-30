@@ -11,6 +11,7 @@ class Move:
     col: int
     castle: bool
     is_king_side: bool
+    is_en_passant: bool
     promotion: PieceType
 
     def __init__(self, row, col):
@@ -18,6 +19,7 @@ class Move:
         self.col = col
         self.castle = False
         self.is_king_side = False
+        self.is_en_passant = False
         self.promotion = PieceType.EMPTY
 
     def set_castle(self, is_right):
@@ -82,9 +84,14 @@ def get_pawn_moves(board: Board, cell: Cell):
                     [Move(cell_row + pawn_advancement, cell_col + 1),
                      Move(cell_row + pawn_advancement, cell_col - 1)])
 
-    moves += filter(lambda move: en_passant_check(board, cell.cell_piece, move.row, move.col),
-                    [Move(cell_row + pawn_advancement, cell_col + 1),
-                     Move(cell_row + pawn_advancement, cell_col - 1)])
+    en_passant_moves = [Move(cell_row + pawn_advancement, cell_col + 1),
+                        Move(cell_row + pawn_advancement, cell_col - 1)]
+
+    for m in en_passant_moves:
+        m.is_en_passant = True
+
+    moves += filter(lambda move: en_passant_check(board, cell.cell_piece, move.row - pawn_advancement, move.col),
+                    en_passant_moves)
 
     return list(moves)
 
@@ -149,6 +156,7 @@ def is_legal(board: Board, cell: Cell, move: Move):
     moves = get_all_normal_moves(board, cell)
     for m in moves:
         if m.row == move.row and move.col == m.col:
+            move.is_en_passant = m.is_en_passant
             return True
     return False
 
@@ -254,7 +262,13 @@ def castle(board: Board, is_white: bool, move: Move):
                                        pieces_dict[PieceType.ROOK]]
 
 
-def update_en_passant(board: Board):
+def update_en_passant(board: Board, cell: Cell, move: Move):
+    if move.is_en_passant:
+        pawn_advancement = 1 if cell.is_white() else -1
+        enemy = board.get_cell(move.row - pawn_advancement, move.col)
+        enemy.cell_piece = Piece(False)
+        enemy_dict = board.get_pieces_dict(not cell.is_white())
+        enemy_dict[PieceType.PAWN] = [c for c in enemy_dict[PieceType.PAWN] if c != enemy]
     if board.en_passant_ready is not None:
         board.en_passant_ready.en_passant = False
         board.en_passant_ready = None
@@ -352,7 +366,7 @@ def make_move(board: Board, cell: Cell, move: Move):
     pieces_dict[cell.get_cell_type()] = [target_cell if c == cell else c for c in pieces_dict[cell.get_cell_type()]]
     target_cell.cell_piece = cell.get_cell_piece()
     cell.cell_piece = Piece(False)
-    update_en_passant(board)
+    update_en_passant(board, target_cell, move)
     update_piece(board, target_cell, move, cell)
 
 
