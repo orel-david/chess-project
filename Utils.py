@@ -170,6 +170,16 @@ def is_threatened(board: Board, is_white: bool, cell: Cell):
     return False
 
 
+def get_threats(board: Board, is_white: bool, cell: Cell):
+    threats = []
+    enemy_pieces = board.get_pieces_dict(not is_white)
+    for piece in enemy_pieces:
+        for enemy in enemy_pieces[piece]:
+            if is_legal(board, enemy, Move(cell.get_row(), cell.get_col())) and cell.is_white() == is_white:
+                threats.append(enemy)
+    return threats
+
+
 def is_under_check(board: Board, is_white: bool):
     king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
     return is_threatened(board, is_white, king_cell)
