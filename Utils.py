@@ -80,7 +80,7 @@ def get_pawn_moves(board: Board, cell: Cell):
 
     moves += filter(lambda move: (not (board.get_cell(move.row, move.col) is None)) and (
             board.get_cell(move.row, move.col).is_white() ^ cell.is_white() and (
-                not board.get_cell(move.row, move.col).is_empty())),
+        not board.get_cell(move.row, move.col).is_empty())),
                     [Move(cell_row + pawn_advancement, cell_col + 1),
                      Move(cell_row + pawn_advancement, cell_col - 1)])
 
@@ -345,23 +345,24 @@ def check_stops_check(board: Board, cell: Cell, move: Move):
     return not result
 
 
-def make_move(board: Board, cell: Cell, move: Move):
+def make_move(board: Board, cell: Cell, move: Move, valid=False):
     if move.castle:
         castle(board, cell.is_white(), move)
 
-    if not is_legal(board, cell, move):
-        raise NonLegal()
+    if not valid:
+        if not is_legal(board, cell, move):
+            raise NonLegal()
 
-    if is_under_check(board, cell.is_white()):
+        if is_under_check(board, cell.is_white()):
+            if not check_stops_check(board, cell, move):
+                raise KingUnderCheck()
+
+        if cell.get_cell_type() == PieceType.KING:
+            if is_threatened(board, cell.is_white(), board.get_cell(move.row, move.col)):
+                raise KingNonLegal()
+
         if not check_stops_check(board, cell, move):
-            raise KingUnderCheck()
-
-    if cell.get_cell_type() == PieceType.KING:
-        if is_threatened(board, cell.is_white(), board.get_cell(move.row, move.col)):
-            raise KingNonLegal()
-
-    if not check_stops_check(board, cell, move):
-        raise KingSacrifice()
+            raise KingSacrifice()
 
     if move.promotion != PieceType.EMPTY:
         promote(board, cell, move)

@@ -51,11 +51,14 @@ class GUI:
     move: Optional[Move]
     white = True
     moves: Optional[Sequence[Move]]
+    threats: Optional[Sequence[Cell]]
 
     def __init__(self):
         pygame.init()
         self.origin = None
         self.move = None
+        self.moves = None
+        self.threats = None
         pygame.display.set_caption("Chess game")
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.board_image = pygame.image.load("images/empty-board.png")
@@ -112,10 +115,21 @@ class GUI:
                                     return
 
                         self.perform_move(board, row, col)
+                        king_cell = board.get_pieces_dict(self.is_white())[PieceType.KING][0]
+                        self.threats = Utils.get_threats(board, self.is_white(), king_cell)
+                        for threat in self.threats:
+                            self.mark_check(threat)
                         return
 
                     print("white" if self.is_white() else "black")
                     self.set_origin(board, row, col)
+
+    def is_in_moves(self, move: Move):
+        for m in self.moves:
+            if m.row == move.row and m.col == move.col:
+                move.is_en_passant = m.is_en_passant
+                return True
+        return False
 
     def set_origin(self, board: Board, row, col):
         self.origin = board.get_cell(row, col)
@@ -133,7 +147,11 @@ class GUI:
     def perform_move(self, board, row, col):
         # TODO: handle promotion
         self.move = Move(row, col)
-        self.make_move(board, (Move(self.origin.get_row(), self.origin.get_col()), self.move))
+        if not self.is_in_moves(self.move):
+            self.move = None
+            self.set_origin(board, row, col)
+            return
+        self.make_move(board, (self.origin, self.move))
         self.draw_board(board)
         self.origin = None
         self.move = None
@@ -151,8 +169,15 @@ class GUI:
         self.screen.blit(surface, rectangle)
         pygame.display.update()
 
-    def mark_check(self, board: Board, cell: Cell):
-        pass
+    def mark_check(self, cell: Cell):
+        rectangle = pygame.Rect((cell.col - 1) * (self.width / 8), (8 - cell.row) * (self.height / 8),
+                                self.width / 8,
+                                self.height / 8)
+        surface = pygame.Surface((rectangle.width, rectangle.height), pygame.SRCALPHA)
+        color = (255, 0, 0)
+        surface.fill((color[0], color[1], color[2], self.alpha))
+        self.screen.blit(surface, rectangle)
+        pygame.display.update()
 
     def end(self, result):
         if result == 1:
@@ -180,7 +205,7 @@ class GUI:
             moves.append(move_2)
         return moves
 
-    def make_move(self, board: Board, user_input: Union[Move, Tuple[Move, Move]]):
+    def make_move(self, board: Board, user_input: Union[Move, Tuple[Cell, Move]]):
         try:
 
             if type(user_input) is Utils.Move:
@@ -188,19 +213,7 @@ class GUI:
                 self.white = not self.white
                 return
 
-            origin_cell = board.get_cell(user_input[0].row, user_input[0].col)
-            if origin_cell is None:
-                return
-
-            if origin_cell.is_white() != self.white:
-                print("You must move your pieces")
-                return
-
-            if origin_cell.get_cell_type() == PieceType.EMPTY:
-                print("You can't move empty cell")
-                return
-
-            Utils.make_move(board, origin_cell, user_input[1])
+            Utils.make_move(board, user_input[0], user_input[1], True)
             self.white = not self.white
         except NonLegal:
             print("Illegal move, try again")
