@@ -155,7 +155,17 @@ class GUI:
         pass
 
     def end(self, result):
-        pass
+        if result == 1:
+            text = "Stalemate"
+        elif result == 1:
+            text = 'white won the game'
+        else:
+            text = 'black won the game'
+        font = pygame.font.SysFont('chalkduster.ttf', 72)
+        img = font.render(text, True, (255, 0, 0))
+        self.screen.blit(img, (300, self.height / 2))
+        pygame.display.update()
+        pygame.time.delay(2000)
 
     def get_castle_moves(self, board: Board):
         moves = []
