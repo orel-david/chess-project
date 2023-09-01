@@ -100,11 +100,37 @@ class GUI:
                     col = 1 + int((x * 8) / self.width)
                     row = 8 - int((y * 8) / self.height)
 
-                    if self.promotion_case:
-                        self.promotion_case = False
-
                     if self.origin is not None:
                         cell = board.get_cell(row, col)
+
+                        if self.promotion_case:
+                            direction = 1 if self.is_white() else -1
+                            queen_option = 8 if self.is_white() else 1
+                            if col != self.move.col:
+                                self.set_origin(board, row, col)
+
+                            if row == queen_option:
+                                self.move.set_promotion(PieceType.QUEEN)
+                            elif row == queen_option - direction:
+                                self.move.set_promotion(PieceType.KNIGHT)
+                            elif row == queen_option - direction * 2:
+                                self.move.set_promotion(PieceType.ROOK)
+                            elif row == queen_option - direction * 3:
+                                self.move.set_promotion(PieceType.BISHOP)
+                            else:
+                                self.set_origin(board, row, col)
+                                return
+                            self.promotion_case = False
+                            self.make_move(board, (self.origin, self.move))
+                            self.draw_board(board)
+                            self.origin = None
+                            self.move = None
+                            king_cell = board.get_pieces_dict(self.is_white())[PieceType.KING][0]
+                            self.threats = Utils.get_threats(board, self.is_white(), king_cell)
+                            for threat in self.threats:
+                                self.mark_check(threat)
+                            return
+
                         if (not cell.is_empty()) and cell.is_white() == self.is_white():
                             self.set_origin(board, row, col)
                             return
@@ -119,7 +145,11 @@ class GUI:
                                     self.move = None
                                     return
 
-                        self.perform_move(board, row, col)
+                        if self.origin.get_cell_type() == PieceType.PAWN:
+                            promotion_rank = 8 if self.is_white() else 1
+                            self.promotion_case = promotion_rank == row
+
+                        self.perform_move(board, row, col, self.promotion_case)
                         king_cell = board.get_pieces_dict(self.is_white())[PieceType.KING][0]
                         self.threats = Utils.get_threats(board, self.is_white(), king_cell)
                         for threat in self.threats:
@@ -155,6 +185,7 @@ class GUI:
         pygame.display.update()
 
     def set_origin(self, board: Board, row, col):
+        self.promotion_case = False
         self.origin = board.get_cell(row, col)
         self.draw_board(board)
         if self.origin.is_white() != self.is_white():
@@ -167,13 +198,18 @@ class GUI:
         for move in self.moves:
             self.draw_move(board, move)
 
-    def perform_move(self, board, row, col):
-        # TODO: handle promotion
+    def perform_move(self, board, row, col, promote=False):
         self.move = Move(row, col)
         if not self.is_in_moves(self.move):
             self.move = None
             self.set_origin(board, row, col)
             return
+
+        if promote:
+            self.draw_board(board)
+            self.draw_promotion_selection(self.move)
+            return
+
         self.make_move(board, (self.origin, self.move))
         self.draw_board(board)
         self.origin = None

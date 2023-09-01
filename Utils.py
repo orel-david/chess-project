@@ -152,7 +152,6 @@ moves_dict = {
 def get_all_normal_moves(board: Board, cell: Cell):
     # And en passant moves
     piece_type = cell.get_cell_type()
-    res = moves_dict[piece_type](board, cell)
     return moves_dict[piece_type](board, cell)
 
 
@@ -310,7 +309,7 @@ def promote(board: Board, cell: Cell, move: Move):
     if cell.get_cell_type() != PieceType.PAWN:
         raise NonLegal()
     promotion_rank = 8 if cell.is_white() else 1
-    if cell.get_row() != promotion_rank:
+    if move.row != promotion_rank:
         raise NonLegal()
 
     pieces_dict = board.get_pieces_dict(cell.is_white())
