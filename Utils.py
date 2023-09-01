@@ -306,6 +306,9 @@ def promote(board: Board, cell: Cell, move: Move):
         raise NonLegal()
     if cell.get_cell_type() != PieceType.PAWN:
         raise NonLegal()
+    promotion_rank = 8 if cell.is_white() else 1
+    if cell.get_row() != promotion_rank:
+        raise NonLegal()
 
     pieces_dict = board.get_pieces_dict(cell.is_white())
     color = cell.is_white()

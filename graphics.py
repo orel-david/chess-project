@@ -99,6 +99,10 @@ class GUI:
                     x, y = event.dict['pos']
                     col = 1 + int((x * 8) / self.width)
                     row = 8 - int((y * 8) / self.height)
+
+                    if self.promotion_case:
+                        self.promotion_case = False
+
                     if self.origin is not None:
                         cell = board.get_cell(row, col)
                         if (not cell.is_empty()) and cell.is_white() == self.is_white():
@@ -131,6 +135,24 @@ class GUI:
                 move.is_en_passant = m.is_en_passant
                 return True
         return False
+
+    def draw_promotion_selection(self, move: Move):
+        color = move.row == 8
+        row = 8 if color else 4
+        rectangle = pygame.Rect((move.col - 1) * (self.width / 8), (8 - row) * (self.height / 8),
+                                self.width / 8 + 5,
+                                self.height / 2)
+        pygame.draw.rect(self.screen, (200, 222, 255), rectangle)
+
+        # draw the pieces
+        row = 8 if color else 1
+        direction = 1 if color else -1
+        self.draw_at_cell(self.pieces[color][PieceType.QUEEN], row, move.col)
+        self.draw_at_cell(self.pieces[color][PieceType.KNIGHT], row - direction, move.col)
+        self.draw_at_cell(self.pieces[color][PieceType.ROOK], row - direction * 2, move.col)
+        self.draw_at_cell(self.pieces[color][PieceType.BISHOP], row - direction * 3, move.col)
+
+        pygame.display.update()
 
     def set_origin(self, board: Board, row, col):
         self.origin = board.get_cell(row, col)
