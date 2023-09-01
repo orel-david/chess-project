@@ -70,6 +70,9 @@ def get_pawn_moves(board: Board, cell: Cell):
     if cell.get_cell_type() != PieceType.PAWN:
         return []
     pawn_advancement = 1 if cell.is_white() else -1
+    promotion_rank = 8 if cell.is_white() else 1
+    if promotion_rank == cell.get_row():
+        return []
     cell_row = cell.get_row()
     cell_col = cell.get_col()
     moves = []

@@ -50,6 +50,7 @@ class GUI:
     origin: Optional[Cell]
     move: Optional[Move]
     white = True
+    promotion_case = False
     moves: Optional[Sequence[Move]]
     threats: Optional[Sequence[Cell]]
 
