@@ -83,7 +83,7 @@ def get_pawn_moves(board: Board, cell: Cell):
 
     moves += filter(lambda move: (not (board.get_cell(move.row, move.col) is None)) and (
             board.get_cell(move.row, move.col).is_white() ^ cell.is_white() and (
-        not board.get_cell(move.row, move.col).is_empty())),
+                not board.get_cell(move.row, move.col).is_empty())),
                     [Move(cell_row + pawn_advancement, cell_col + 1),
                      Move(cell_row + pawn_advancement, cell_col - 1)])
 
@@ -152,6 +152,7 @@ moves_dict = {
 def get_all_normal_moves(board: Board, cell: Cell):
     # And en passant moves
     piece_type = cell.get_cell_type()
+    res = moves_dict[piece_type](board, cell)
     return moves_dict[piece_type](board, cell)
 
 
@@ -168,6 +169,8 @@ def is_threatened(board: Board, is_white: bool, cell: Cell):
     enemy_pieces = board.get_pieces_dict(not is_white)
     for piece in enemy_pieces:
         for enemy in enemy_pieces[piece]:
+            if piece == PieceType.PAWN and enemy.get_col() == cell.get_col():
+                continue
             if is_legal(board, enemy, Move(cell.get_row(), cell.get_col())) and cell.is_white() == is_white:
                 return True
     return False
