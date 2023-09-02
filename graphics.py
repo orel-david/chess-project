@@ -239,15 +239,16 @@ class GUI:
         pygame.display.update()
 
     def end(self, result):
-        if result == 0:
-            text = "Stalemate"
-        elif result == 1:
-            text = 'white won the game'
-        else:
-            text = 'black won the game'
         font = pygame.font.SysFont('chalkduster.ttf', 72)
-        img = font.render(text, True, (255, 0, 0))
-        self.screen.blit(img, (300, self.height / 2))
+        if result == 0:
+            img = font.render("Stalemate", True, (255, 0, 0))
+            self.screen.blit(img, (300, self.height / 2))
+        elif result == 1:
+            img = font.render('white won the game', True, (255, 0, 0))
+            self.screen.blit(img, (200, self.height / 2))
+        else:
+            img = font.render('black won the game', True, (255, 0, 0))
+            self.screen.blit(img, (200, self.height / 2))
         pygame.display.update()
         pygame.time.delay(2000)
 
