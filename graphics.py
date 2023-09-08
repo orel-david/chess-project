@@ -24,20 +24,6 @@ def create_image_dict(is_white: bool, width: int, height: int):
     return output_dict
 
 
-def condition(board, cell, move):
-    if Utils.is_under_check(board, cell.is_white()):
-        if not Utils.check_stops_check(board, cell, move):
-            return False
-
-    if cell.get_cell_type() == PieceType.KING:
-        if Utils.is_threatened(board, cell.is_white(), board.get_cell(move.row, move.col)):
-            return False
-
-    if not Utils.check_stops_check(board, cell, move):
-        return False
-    return True
-
-
 class GUI:
     width = 800
     height = 800
@@ -191,10 +177,7 @@ class GUI:
         if self.origin.is_white() != self.is_white():
             self.origin = None
             return
-        moves = Utils.get_all_normal_moves(board, self.origin)
-        if self.origin.get_cell_type() == PieceType.KING:
-            moves += self.get_castle_moves(board)
-        self.moves = [m for m in moves if condition(board, self.origin, m)]
+        self.moves = Utils.get_all_legal_moves(board, self.origin)
         for move in self.moves:
             self.draw_move(board, move)
 
@@ -253,17 +236,7 @@ class GUI:
         pygame.time.delay(2000)
 
     def get_castle_moves(self, board: Board):
-        moves = []
-        row = 1 if self.is_white() else 8
-        move_1 = Move(row, 7)
-        move_1.set_castle(True)
-        if Utils.can_castle(board, self.is_white(), move_1):
-            moves.append(move_1)
-        move_2 = Move(row, 3)
-        move_2.set_castle(False)
-        if Utils.can_castle(board, self.is_white(), move_2):
-            moves.append(move_2)
-        return moves
+        return Utils.get_castle_moves(board, self.is_white())
 
     def make_move(self, board: Board, user_input: Union[Move, Tuple[Cell, Move]]):
         try:

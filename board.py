@@ -45,7 +45,6 @@ class Board:
     en_passant_ready = None
     count = 0
 
-    # In the future maybe add support for fen and pgn as init method
     def __init__(self):
         self.board = []
         white_pawn_row = []
@@ -69,6 +68,9 @@ class Board:
             self.board.append(create_empty_row(3 + i))
         self.board.append(black_pawn_row)
         self.board.append(black_start)
+
+    def import_from_fen(self, fen_string):
+        pass
 
     def add_row_pieces(self, row_pieces):
         for cell in row_pieces:

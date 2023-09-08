@@ -1,3 +1,5 @@
+import copy
+
 import pieces.rook
 from board import Board
 from cell import Cell
@@ -83,7 +85,7 @@ def get_pawn_moves(board: Board, cell: Cell):
 
     moves += filter(lambda move: (not (board.get_cell(move.row, move.col) is None)) and (
             board.get_cell(move.row, move.col).is_white() ^ cell.is_white() and (
-                not board.get_cell(move.row, move.col).is_empty())),
+        not board.get_cell(move.row, move.col).is_empty())),
                     [Move(cell_row + pawn_advancement, cell_col + 1),
                      Move(cell_row + pawn_advancement, cell_col - 1)])
 
@@ -173,6 +175,14 @@ def is_threatened(board: Board, is_white: bool, cell: Cell):
             if is_legal(board, enemy, Move(cell.get_row(), cell.get_col())) and cell.is_white() == is_white:
                 return True
     return False
+
+
+def get_all_legal_moves(board: Board, cell: Cell):
+    moves = get_all_normal_moves(board, cell)
+    if cell.get_cell_type() == PieceType.KING:
+        moves += get_castle_moves(board, cell.is_white())
+    moves = [m for m in moves if condition(board, cell, m)]
+    return moves
 
 
 def get_threats(board: Board, is_white: bool, cell: Cell):
@@ -414,6 +424,33 @@ def translate_algebraic_notation_move(notation: str):
 
     return Move(int(notation[1]), ord(notation[0].lower()) - ord('a') + 1)
 
+
+def condition(board, cell, move):
+    if is_under_check(board, cell.is_white()):
+        if not check_stops_check(board, cell, move):
+            return False
+
+    if cell.get_cell_type() == PieceType.KING:
+        if is_threatened(board, cell.is_white(), board.get_cell(move.row, move.col)):
+            return False
+
+    if not check_stops_check(board, cell, move):
+        return False
+    return True
+
+
+def get_castle_moves(board: Board, is_white: bool):
+    moves = []
+    row = 1 if is_white else 8
+    move_1 = Move(row, 7)
+    move_1.set_castle(True)
+    if can_castle(board, is_white, move_1):
+        moves.append(move_1)
+    move_2 = Move(row, 3)
+    move_2.set_castle(False)
+    if can_castle(board, is_white, move_2):
+        moves.append(move_2)
+    return moves
 
 def check_stalemate(board: Board):
     if board.count >= 50:
