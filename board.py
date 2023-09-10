@@ -108,17 +108,17 @@ class Board:
             self.white_board = binary_ops_utils.switch_cell_bit(self.white_board, cell, True)
         else:
             self.black_pieces[piece].append(cell)
-            self.black_board = binary_ops_utils.switch_bit(self.black_board, cell, True)
+            self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, True)
 
     def remove_cell_piece(self, cell: int, piece: PieceType, is_white: bool):
-        self.board = binary_ops_utils.switch_bit(self.board, cell, False)
+        self.board = binary_ops_utils.switch_cell_bit(self.board, cell, False)
         self.piece_maps[piece] = binary_ops_utils.switch_cell_bit(self.piece_maps[piece], cell, False)
         if is_white:
             self.white_pieces[piece] = [c for c in self.white_pieces[piece] if c != cell]
-            self.white_board = binary_ops_utils.switch_bit(self.white_board, cell, False)
+            self.white_board = binary_ops_utils.switch_cell_bit(self.white_board, cell, False)
         else:
             self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != cell]
-            self.black_board = binary_ops_utils.switch_bit(self.black_board, cell, False)
+            self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, False)
 
     def get_pieces_dict(self, is_white):
         return self.white_pieces if is_white else self.black_pieces
