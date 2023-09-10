@@ -1,40 +1,5 @@
-from cell import Cell
-from pieces.bishop import Bishop
-from pieces.king import King
-from pieces.knight import Knight
-from pieces.pawn import Pawn
-from pieces.piece import Piece, PieceType
-from pieces.queen import Queen
-from pieces.rook import Rook
-
-
-def create_start_row(color):
-    start = []
-    index = 1 if color else 8
-    rook_1 = Rook(color)
-    rook_2 = Rook(color)
-    knight = Knight(color)
-    bishop = Bishop(color)
-    queen = Queen(color)
-    king = King(color)
-    start.append(Cell(index, 1, rook_1))
-    start.append(Cell(index, 2, knight))
-    start.append(Cell(index, 3, bishop))
-    start.append(Cell(index, 4, queen))
-    start.append(Cell(index, 5, king))
-    start.append(Cell(index, 6, bishop))
-    start.append(Cell(index, 7, knight))
-    start.append(Cell(index, 8, rook_2))
-    return start
-
-
-def create_empty_row(index):
-    empty = Piece(True)
-    row = []
-    for i in range(1, 9):
-        cell = Cell(index, i, empty)
-        row.append(cell)
-    return row
+import binary_ops_utils
+from piece import PieceType
 
 
 class Board:
@@ -42,56 +7,91 @@ class Board:
                     PieceType.KING: [], PieceType.ROOK: []}
     white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
                     PieceType.KING: [], PieceType.ROOK: []}
-    en_passant_ready = None
+    pieces_dict = {'q': PieceType.QUEEN, 'r': PieceType.ROOK, 'b': PieceType.BISHOP, 'n': PieceType.KNIGHT,
+                   'k': PieceType.KING, 'p': PieceType.PAWN}
+    castling_options = ''
+    is_white: bool
+    en_passant_ready = 0
     count = 0
+    board = 0
+    white_board = 0
+    black_board = 0
+    piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
+                  PieceType.KING: 0, PieceType.ROOK: 0}
 
     def __init__(self):
-        self.board = []
-        white_pawn_row = []
-        black_pawn_row = []
-        for i in range(1, 9):
-            black_pawn = Pawn(False)
-            white_pawn = Pawn(True)
-            black_cell = Cell(7, i, black_pawn)
-            self.black_pieces[PieceType.PAWN].append(black_cell)
-            white_cell = Cell(2, i, white_pawn)
-            self.white_pieces[PieceType.PAWN].append(white_cell)
-            white_pawn_row.append(white_cell)
-            black_pawn_row.append(black_cell)
-        white_start = create_start_row(True)
-        black_start = create_start_row(False)
-        self.add_row_pieces(white_start)
-        self.add_row_pieces(black_start)
-        self.board.append(white_start)
-        self.board.append(white_pawn_row)
-        for i in range(4):
-            self.board.append(create_empty_row(3 + i))
-        self.board.append(black_pawn_row)
-        self.board.append(black_start)
+        self.import_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
-    def import_from_fen(self, fen_string):
-        pass
-
-    def add_row_pieces(self, row_pieces):
-        for cell in row_pieces:
-            if not cell.is_empty():
-                if cell.is_white():
-                    self.white_pieces[cell.get_cell_type()].append(cell)
+    def import_from_fen(self, fen_string: str):
+        parts = fen_string.split()
+        rows = parts[0].split("/")
+        rows.reverse()
+        self.is_white = True if parts[1].lower() == 'w' else False
+        self.castling_options = parts[2]
+        self.en_passant_ready = 0 if parts[3] == "-" else binary_ops_utils.switch_bit(0, int(parts[3][1]) - 1,
+                                                                                      ord(parts[3][0].lower()) - ord(
+                                                                                          'a'), True)
+        for i in range(8):
+            j = 0
+            row = rows[i]
+            for letter in row:
+                if letter.isdigit():
+                    j += int(letter)
                 else:
-                    self.black_pieces[cell.get_cell_type()].append(cell)
+                    piece_type = self.pieces_dict[letter.lower()]
+                    self.piece_maps[piece_type] = binary_ops_utils.switch_bit(self.piece_maps[piece_type], i, j, True)
+
+                    if letter.islower():
+                        self.black_pieces[piece_type].append(i * 8 + j)
+                        self.board = binary_ops_utils.switch_bit(self.board, i, j, True)
+                        self.black_board = binary_ops_utils.switch_bit(self.black_board, i, j, True)
+                    else:
+                        self.white_pieces[piece_type].append(i * 8 + j)
+                        self.board = binary_ops_utils.switch_bit(self.board, i, j, True)
+                        self.white_board = binary_ops_utils.switch_bit(self.white_board, i, j, True)
+
+                    j += 1
 
     def get_board(self):
         return self.board
 
-    def get_cell(self, row: int, col: int):
-        if row > 8 or col > 8 or row < 1 or col < 1:
-            return None
-        return self.board[row - 1][col - 1]
+    def get_board_by_color(self, is_white: bool):
+        return self.white_board if is_white else self.black_board
 
-    def set_piece(self, row: int, col: int, piece: Piece):
+    def is_empty(self, row: int, col: int):
+        if row > 8 or col > 8 or row < 1 or col < 1:
+            raise
+        return (self.board & (1 << (row * 8 + col))) == 0
+
+    def is_colored(self, row: int, col: int, is_white: bool):
         if row > 8 or col > 8 or row < 1 or col < 1:
             return
-        self.board[row - 1][col - 1].change_cell_piece(piece)
+        board = self.white_board if is_white else self.black_board
+        return (board & (1 << (row * 8 + col))) != 0
+
+    def set_piece(self, row: int, col: int, piece: PieceType, is_white: bool):
+        if row > 8 or col > 8 or row < 1 or col < 1:
+            return
+        self.board = binary_ops_utils.switch_bit(self.board, row, col, True)
+        self.piece_maps[piece] = binary_ops_utils.switch_bit(self.piece_maps[piece], row, col, True)
+        if is_white:
+            self.white_pieces[piece].append(row * 8 + col)
+            self.white_board = binary_ops_utils.switch_bit(self.white_board, row, col, True)
+        else:
+            self.black_pieces[piece].append(row * 8 + col)
+            self.black_board = binary_ops_utils.switch_bit(self.black_board, row, col, True)
+
+    def remove_piece(self, row: int, col: int, piece: PieceType, is_white: bool):
+        if row > 8 or col > 8 or row < 1 or col < 1:
+            return
+        self.board = binary_ops_utils.switch_bit(self.board, row, col, False)
+        self.piece_maps[piece] = binary_ops_utils.switch_bit(self.piece_maps[piece], row, col, False)
+        if is_white:
+            self.white_pieces[piece] = [c for c in self.white_pieces[piece] if c != (row * 8 + col)]
+            self.white_board = binary_ops_utils.switch_bit(self.white_board, row, col, False)
+        else:
+            self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != (row * 8 + col)]
+            self.black_board = binary_ops_utils.switch_bit(self.black_board, row, col, False)
 
     def get_pieces_dict(self, is_white):
         return self.white_pieces if is_white else self.black_pieces
@@ -104,10 +104,24 @@ class Board:
                     self.black_pieces[PieceType.BISHOP] + self.black_pieces[PieceType.KNIGHT]) <= 1
         return False
 
-    def print_board(self):
-        for row in reversed(self.board):
-            for cell in row:
-                cell.print_cell()
+    def update_en_passant(self, row: int, col: int):
+        self.en_passant_ready = binary_ops_utils.switch_bit(0, row, col, True)
 
-            if row != self.board[0]:
-                print("-" * 20)
+    def get_en_passant(self):
+        return self.en_passant_ready
+
+    def is_type_of(self, row: int, col: int, piece: PieceType):
+        if row > 8 or col > 8 or row < 1 or col < 1:
+            return
+        return (self.piece_maps[piece] & (1 << (row * 8 + col))) != 0
+
+    def get_type(self, row: int, col: int):
+        if row > 8 or col > 8 or row < 1 or col < 1:
+            return
+        for piece in self.piece_maps.keys():
+            if (self.piece_maps[piece] & (1 << (row * 8 + col))) != 0:
+                return piece
+        return PieceType.EMPTY
+
+
+board = Board()
