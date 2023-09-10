@@ -63,11 +63,18 @@ class Board:
             raise
         return (self.board & (1 << (row * 8 + col))) == 0
 
+    def is_cell_empty(self, cell: int):
+        return (self.board & (1 << cell)) == 0
+
     def is_colored(self, row: int, col: int, is_white: bool):
         if row > 8 or col > 8 or row < 1 or col < 1:
             return
         board = self.white_board if is_white else self.black_board
         return (board & (1 << (row * 8 + col))) != 0
+
+    def is_cell_colored(self, cell: int, is_white: bool):
+        board = self.white_board if is_white else self.black_board
+        return (board & (1 << cell)) != 0
 
     def set_piece(self, row: int, col: int, piece: PieceType, is_white: bool):
         if row > 8 or col > 8 or row < 1 or col < 1:
@@ -93,6 +100,26 @@ class Board:
             self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != (row * 8 + col)]
             self.black_board = binary_ops_utils.switch_bit(self.black_board, row, col, False)
 
+    def set_cell_piece(self, cell: int, piece: PieceType, is_white: bool):
+        self.board = binary_ops_utils.switch_cell_bit(self.board, cell, True)
+        self.piece_maps[piece] = binary_ops_utils.switch_cell_bit(self.piece_maps[piece], cell, True)
+        if is_white:
+            self.white_pieces[piece].append(cell)
+            self.white_board = binary_ops_utils.switch_cell_bit(self.white_board, cell, True)
+        else:
+            self.black_pieces[piece].append(cell)
+            self.black_board = binary_ops_utils.switch_bit(self.black_board, cell, True)
+
+    def remove_cell_piece(self, cell: int, piece: PieceType, is_white: bool):
+        self.board = binary_ops_utils.switch_bit(self.board, cell, False)
+        self.piece_maps[piece] = binary_ops_utils.switch_cell_bit(self.piece_maps[piece], cell, False)
+        if is_white:
+            self.white_pieces[piece] = [c for c in self.white_pieces[piece] if c != cell]
+            self.white_board = binary_ops_utils.switch_bit(self.white_board, cell, False)
+        else:
+            self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != cell]
+            self.black_board = binary_ops_utils.switch_bit(self.black_board, cell, False)
+
     def get_pieces_dict(self, is_white):
         return self.white_pieces if is_white else self.black_pieces
 
@@ -110,10 +137,8 @@ class Board:
     def get_en_passant(self):
         return self.en_passant_ready
 
-    def is_type_of(self, row: int, col: int, piece: PieceType):
-        if row > 8 or col > 8 or row < 1 or col < 1:
-            return
-        return (self.piece_maps[piece] & (1 << (row * 8 + col))) != 0
+    def is_type_of(self, cell: int, piece: PieceType):
+        return (self.piece_maps[piece] & (1 << cell)) != 0
 
     def get_type(self, row: int, col: int):
         if row > 8 or col > 8 or row < 1 or col < 1:
