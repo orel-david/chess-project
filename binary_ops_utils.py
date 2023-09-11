@@ -13,6 +13,8 @@ def switch_cell_bit(source: int, cell: int, on: bool):
 def translate_row_col_to_cell(row: int, col: int):
     if row > 8 or col > 8 or row < 1 or col < 1:
         return -1
+    row = row - 1
+    col = col - 1
     return row * 8 + col
 
 
