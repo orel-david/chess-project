@@ -17,6 +17,7 @@ class Board:
     king_moves = []
     vertical_distances = []
     directions = [1, -1, 8, -8, 7, -7, 9, -9]
+    sliding = 0
     piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
                   PieceType.KING: 0, PieceType.ROOK: 0}
 
@@ -30,6 +31,8 @@ class Board:
         self.update_knight_moves()
         self.update_king_moves()
         self.import_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
+            PieceType.ROOK]
 
     def import_from_fen(self, fen_string: str):
         self.black_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
@@ -103,6 +106,8 @@ class Board:
         else:
             self.black_pieces[piece].append(row * 8 + col)
             self.black_board = binary_ops_utils.switch_bit(self.black_board, row, col, True)
+        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
+            PieceType.ROOK]
 
     def remove_piece(self, row: int, col: int, piece: PieceType, is_white: bool):
         if row > 8 or col > 8 or row < 1 or col < 1:
@@ -117,6 +122,8 @@ class Board:
         else:
             self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != (row * 8 + col)]
             self.black_board = binary_ops_utils.switch_bit(self.black_board, row, col, False)
+        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
+            PieceType.ROOK]
 
     def set_cell_piece(self, cell: int, piece: PieceType, is_white: bool):
         self.board = binary_ops_utils.switch_cell_bit(self.board, cell, True)
@@ -127,6 +134,8 @@ class Board:
         else:
             self.black_pieces[piece].append(cell)
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, True)
+        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
+            PieceType.ROOK]
 
     def remove_cell_piece(self, cell: int, piece: PieceType, is_white: bool):
         self.board = binary_ops_utils.switch_cell_bit(self.board, cell, False)
@@ -137,6 +146,8 @@ class Board:
         else:
             self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != cell]
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, False)
+        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
+            PieceType.ROOK]
 
     def get_pieces_dict(self, is_white):
         return self.white_pieces if is_white else self.black_pieces
@@ -169,10 +180,23 @@ class Board:
         return PieceType.EMPTY
 
     def get_cell_type(self, cell: int):
-        for piece in self.piece_maps.keys():
-            if (self.piece_maps[piece] & (1 << cell)) != 0:
-                return piece
-        return PieceType.EMPTY
+        if self.is_cell_empty(cell):
+            return PieceType.EMPTY
+
+        if (self.sliding & (1 << cell)) != 0:
+            if (self.piece_maps[PieceType.ROOK] & (1 << cell)) != 0:
+                return PieceType.ROOK
+            elif (self.piece_maps[PieceType.BISHOP] & (1 << cell)) != 0:
+                return PieceType.BISHOP
+            else:
+                return PieceType.QUEEN
+        else:
+            if (self.piece_maps[PieceType.PAWN] & (1 << cell)) != 0:
+                return PieceType.PAWN
+            elif (self.piece_maps[PieceType.KING] & (1 << cell)) != 0:
+                return PieceType.KING
+            else:
+                return PieceType.KNIGHT
 
     def update_pawn_moves(self):
         white_moves = []
