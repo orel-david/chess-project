@@ -14,6 +14,7 @@ class Board:
     black_board = 0
     pawn_moves = []
     knight_moves = []
+    king_moves = []
     vertical_distances = []
     directions = [1, -1, 8, -8, 7, -7, 9, -9]
     piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
@@ -27,6 +28,7 @@ class Board:
         self.update_distances()
         self.update_pawn_moves()
         self.update_knight_moves()
+        self.update_king_moves()
         self.import_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
     def import_from_fen(self, fen_string: str):
@@ -166,6 +168,12 @@ class Board:
                 return piece
         return PieceType.EMPTY
 
+    def get_cell_type(self, cell: int):
+        for piece in self.piece_maps.keys():
+            if (self.piece_maps[piece] & (1 << cell)) != 0:
+                return piece
+        return PieceType.EMPTY
+
     def update_pawn_moves(self):
         white_moves = []
         black_moves = []
@@ -226,6 +234,24 @@ class Board:
                     val = binary_ops_utils.switch_cell_bit(val, option[0] * 8 + option[1], True)
                 self.knight_moves.append(val)
 
+    def update_king_moves(self):
+        moves = [(0, 1), (0, -1), (1, 1), (-1, -1),
+                 (1, -1), (-1, 1), (1, 0), (-1, 0)]
+        for i in range(8):
+            for j in range(8):
+                val = 0
+                options = []
+                for move in moves:
+                    if binary_ops_utils.translate_row_col_to_cell(move[0] + i + 1, move[1] + j + 1) != -1:
+                        options.append((move[0] + i, move[1] + j))
+
+                for option in options:
+                    val = binary_ops_utils.switch_cell_bit(val, option[0] * 8 + option[1], True)
+                self.king_moves.append(val)
+
+    def get_king_cell_moves(self, cell: int):
+        return self.king_moves[cell]
+
     def get_knight_moves(self, row: int, col: int, is_white: bool):
         cell = binary_ops_utils.translate_row_col_to_cell(row, col)
         if cell == -1 or (not self.is_type_of(cell, PieceType.KNIGHT)):
@@ -238,7 +264,44 @@ class Board:
         return self.knight_moves[cell] & (~board)
 
     def update_distances(self):
-        pass
+        for i in range(8):
+            for j in range(8):
+                north = 7 - i
+                south = i
+                west = j
+                east = 7 - j
+                self.vertical_distances.append((east, west, north, south,
+                                                min(north, west), min(south, east), min(north, east), min(south, west)))
+
+    def get_vertical_cell_moves(self, cell: int, piece: PieceType, is_white: bool):
+        start = 4 if piece == PieceType.BISHOP else 0
+        end = 4 if piece == PieceType.ROOK else 8
+        result = 0
+        for i in range(start, end):
+            direction = self.directions[i]
+            for j in range(self.vertical_distances[cell][i]):
+                target = direction * (j + 1) + cell
+
+                if self.is_cell_colored(target, is_white):
+                    break
+
+                result = binary_ops_utils.switch_cell_bit(result, target, True)
+
+                if not self.is_cell_empty(target):
+                    break
+        return result
+
+    def get_moves_by_cell(self, cell: int, is_white: bool):
+        piece = self.get_cell_type(cell)
+        if self.is_cell_empty(cell):
+            return
+        if piece == PieceType.PAWN:
+            return self.get_pawn_moves(cell, is_white)
+        elif piece == PieceType.KING:
+            return self.get_king_cell_moves(cell)
+        elif piece == PieceType.KNIGHT:
+            return self.get_knight_cell_moves(cell, is_white)
+        return self.get_vertical_cell_moves(cell, piece, is_white)
 
     def get_distances(self):
         return self.vertical_distances
