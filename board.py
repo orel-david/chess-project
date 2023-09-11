@@ -3,10 +3,6 @@ from piece import PieceType
 
 
 class Board:
-    black_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
-                    PieceType.KING: [], PieceType.ROOK: []}
-    white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
-                    PieceType.KING: [], PieceType.ROOK: []}
     pieces_dict = {'q': PieceType.QUEEN, 'r': PieceType.ROOK, 'b': PieceType.BISHOP, 'n': PieceType.KNIGHT,
                    'k': PieceType.KING, 'p': PieceType.PAWN}
     castling_options = ''
@@ -16,21 +12,35 @@ class Board:
     board = 0
     white_board = 0
     black_board = 0
+    pawn_moves = []
+    knight_moves = []
+    vertical_distances = []
+    directions = [1, -1, 8, -8, 7, -7, 9, -9]
     piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
                   PieceType.KING: 0, PieceType.ROOK: 0}
 
     def __init__(self):
+        self.black_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
+                             PieceType.KING: [], PieceType.ROOK: []}
+        self.white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
+                             PieceType.KING: [], PieceType.ROOK: []}
+        self.update_distances()
+        self.update_pawn_moves()
+        self.update_knight_moves()
         self.import_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
     def import_from_fen(self, fen_string: str):
+        self.black_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
+                             PieceType.KING: [], PieceType.ROOK: []}
+        self.white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
+                             PieceType.KING: [], PieceType.ROOK: []}
         parts = fen_string.split()
         rows = parts[0].split("/")
         rows.reverse()
         self.is_white = True if parts[1].lower() == 'w' else False
         self.castling_options = parts[2]
-        self.en_passant_ready = 0 if parts[3] == "-" else binary_ops_utils.switch_bit(0, int(parts[3][1]) - 1,
-                                                                                      ord(parts[3][0].lower()) - ord(
-                                                                                          'a'), True)
+        self.en_passant_ready = 0 if parts[3] == "-" else binary_ops_utils.translate_row_col_to_cell(
+            int(parts[3][1]) - 1, ord(parts[3][0].lower()) - ord('a'))
         for i in range(8):
             j = 0
             row = rows[i]
@@ -60,7 +70,9 @@ class Board:
 
     def is_empty(self, row: int, col: int):
         if row > 8 or col > 8 or row < 1 or col < 1:
-            raise
+            return
+        row = row - 1
+        col = col - 1
         return (self.board & (1 << (row * 8 + col))) == 0
 
     def is_cell_empty(self, cell: int):
@@ -79,6 +91,8 @@ class Board:
     def set_piece(self, row: int, col: int, piece: PieceType, is_white: bool):
         if row > 8 or col > 8 or row < 1 or col < 1:
             return
+        row = row - 1
+        col = col - 1
         self.board = binary_ops_utils.switch_bit(self.board, row, col, True)
         self.piece_maps[piece] = binary_ops_utils.switch_bit(self.piece_maps[piece], row, col, True)
         if is_white:
@@ -91,6 +105,8 @@ class Board:
     def remove_piece(self, row: int, col: int, piece: PieceType, is_white: bool):
         if row > 8 or col > 8 or row < 1 or col < 1:
             return
+        row = row - 1
+        col = col - 1
         self.board = binary_ops_utils.switch_bit(self.board, row, col, False)
         self.piece_maps[piece] = binary_ops_utils.switch_bit(self.piece_maps[piece], row, col, False)
         if is_white:
@@ -132,7 +148,7 @@ class Board:
         return False
 
     def update_en_passant(self, row: int, col: int):
-        self.en_passant_ready = binary_ops_utils.switch_bit(0, row, col, True)
+        self.en_passant_ready = binary_ops_utils.translate_row_col_to_cell(row, col)
 
     def get_en_passant(self):
         return self.en_passant_ready
@@ -143,10 +159,86 @@ class Board:
     def get_type(self, row: int, col: int):
         if row > 8 or col > 8 or row < 1 or col < 1:
             return
+        row = row - 1
+        col = col - 1
         for piece in self.piece_maps.keys():
             if (self.piece_maps[piece] & (1 << (row * 8 + col))) != 0:
                 return piece
         return PieceType.EMPTY
 
+    def update_pawn_moves(self):
+        white_moves = []
+        black_moves = []
+        for i in range(8):
+            for j in range(8):
+                white_val = 0
+                black_val = 0
+                white_options = filter(lambda t: binary_ops_utils.translate_row_col_to_cell(t[0] + 1, t[1] + 1) != -1,
+                                       [(i + 1, j + 1), (i + 1, j - 1)])
+                black_options = filter(lambda t: binary_ops_utils.translate_row_col_to_cell(t[0] + 1, t[1] + 1) != -1,
+                                       [(i - 1, j + 1), (i - 1, j - 1)])
+                for option in white_options:
+                    white_val = binary_ops_utils.switch_cell_bit(white_val, option[0] * 8 + option[1], True)
+                for option in black_options:
+                    black_val = binary_ops_utils.switch_cell_bit(black_val, option[0] * 8 + option[1], True)
+                white_moves.append(white_val)
+                black_moves.append(black_val)
 
-board = Board()
+        self.pawn_moves.append(white_moves)
+        self.pawn_moves.append(black_moves)
+
+    def get_pawn_moves(self, cell: int, is_white: bool):
+        captures = self.pawn_moves[0] if is_white else self.pawn_moves[1]
+        board = self.black_board if is_white else self.white_board
+        pawn_advancement = 8 if is_white else -8
+        start_row = 1 if is_white else 6
+        en_passant_row = 4 if is_white else 5
+        row = cell / 8
+        captures = captures[cell] & board
+        forward = cell + pawn_advancement
+        moves = 0
+        if 0 <= forward < 64:
+            moves = binary_ops_utils.switch_cell_bit(0, forward, True)
+            forward = forward + pawn_advancement
+            if 0 <= forward < 64:
+                moves = binary_ops_utils.switch_cell_bit(moves, forward, row == start_row)
+        moves = moves & (~self.board)
+        if self.en_passant_ready != 0 and row == en_passant_row:
+            if cell + 1 == self.en_passant_ready:
+                moves = binary_ops_utils.switch_cell_bit(moves, cell + 9, True)
+            elif cell - 1 == self.en_passant_ready:
+                moves = binary_ops_utils.switch_cell_bit(moves, cell + 7, True)
+
+        return moves | captures
+
+    def update_knight_moves(self):
+        moves = [(2, 1), (2, -1), (-2, 1), (-2, -1),
+                 (1, 2), (-1, 2), (1, -2), (-1, -2)]
+        for i in range(8):
+            for j in range(8):
+                val = 0
+                options = []
+                for move in moves:
+                    if binary_ops_utils.translate_row_col_to_cell(move[0] + i + 1, move[1] + j + 1) != -1:
+                        options.append((move[0] + i, move[1] + j))
+
+                for option in options:
+                    val = binary_ops_utils.switch_cell_bit(val, option[0] * 8 + option[1], True)
+                self.knight_moves.append(val)
+
+    def get_knight_moves(self, row: int, col: int, is_white: bool):
+        cell = binary_ops_utils.translate_row_col_to_cell(row, col)
+        if cell == -1 or (not self.is_type_of(cell, PieceType.KNIGHT)):
+            return []
+        board = self.white_board if is_white else self.black_board
+        return self.knight_moves[cell] & (~board)
+
+    def get_knight_cell_moves(self, cell: int, is_white):
+        board = self.white_board if is_white else self.black_board
+        return self.knight_moves[cell] & (~board)
+
+    def update_distances(self):
+        pass
+
+    def get_distances(self):
+        return self.vertical_distances
