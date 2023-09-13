@@ -276,7 +276,8 @@ class Board:
                 self.king_moves.append(val)
 
     def get_king_cell_moves(self, cell: int):
-        return self.king_moves[cell]
+        board = self.white_board if self.is_white else self.black_board
+        return self.king_moves[cell] & (~board)
 
     def get_knight_moves(self, row: int, col: int, is_white: bool):
         cell = binary_ops_utils.translate_row_col_to_cell(row, col)
