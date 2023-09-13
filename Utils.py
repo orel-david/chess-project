@@ -1,6 +1,6 @@
 import binary_ops_utils
 from board import Board
-from chess_exceptions import NonLegal, KingUnderCheck, KingNonLegal, KingSacrifice
+from chess_exceptions import NonLegal, KingUnderCheck
 from piece import PieceType
 
 
