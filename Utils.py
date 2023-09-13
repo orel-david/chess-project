@@ -16,9 +16,6 @@ class Move:
     is_en_passant: bool
     promotion: PieceType
 
-    def __init__(self, row, col):
-        self.row = row
-        self.col = col
         self.castle = False
         self.is_king_side = False
         self.is_en_passant = False
