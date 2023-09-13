@@ -18,6 +18,13 @@ class Board:
     vertical_distances = []
     directions = [1, -1, 8, -8, 7, -7, 9, -9]
     sliding = 0
+    attackers = [0, 0]
+    pin_map = 0
+    check_map = 0
+    position_in_check = False
+    position_in_double_check = False
+    pin_in_position = False
+
     piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
                   PieceType.KING: 0, PieceType.ROOK: 0}
 
@@ -26,13 +33,16 @@ class Board:
                              PieceType.KING: [], PieceType.ROOK: []}
         self.white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
                              PieceType.KING: [], PieceType.ROOK: []}
-        self.update_distances()
-        self.update_pawn_moves()
-        self.update_knight_moves()
-        self.update_king_moves()
+        self.__update_distances__()
+        self.__update_pawn_moves__()
+        self.__update_knight_moves__()
+        self.__update_king_moves__()
         self.import_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
         self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
             PieceType.ROOK]
+        self.__update_attacker__(True)
+        self.__update_attacker__(False)
+        self.__update_pins_and_checks__(True)
 
     def import_from_fen(self, fen_string: str):
         self.black_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
@@ -106,8 +116,6 @@ class Board:
         else:
             self.black_pieces[piece].append(row * 8 + col)
             self.black_board = binary_ops_utils.switch_bit(self.black_board, row, col, True)
-        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
-            PieceType.ROOK]
 
     def remove_piece(self, row: int, col: int, piece: PieceType, is_white: bool):
         if row > 8 or col > 8 or row < 1 or col < 1:
@@ -122,8 +130,6 @@ class Board:
         else:
             self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != (row * 8 + col)]
             self.black_board = binary_ops_utils.switch_bit(self.black_board, row, col, False)
-        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
-            PieceType.ROOK]
 
     def set_cell_piece(self, cell: int, piece: PieceType, is_white: bool):
         self.board = binary_ops_utils.switch_cell_bit(self.board, cell, True)
@@ -134,8 +140,6 @@ class Board:
         else:
             self.black_pieces[piece].append(cell)
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, True)
-        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
-            PieceType.ROOK]
 
     def remove_cell_piece(self, cell: int, piece: PieceType, is_white: bool):
         self.board = binary_ops_utils.switch_cell_bit(self.board, cell, False)
@@ -146,8 +150,6 @@ class Board:
         else:
             self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != cell]
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, False)
-        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
-            PieceType.ROOK]
 
     def get_pieces_dict(self, is_white):
         return self.white_pieces if is_white else self.black_pieces
@@ -159,9 +161,6 @@ class Board:
                 return len(self.black_pieces[PieceType.ROOK] + self.black_pieces[PieceType.QUEEN]) == 0 and len(
                     self.black_pieces[PieceType.BISHOP] + self.black_pieces[PieceType.KNIGHT]) <= 1
         return False
-
-    def update_en_passant(self, row: int, col: int):
-        self.en_passant_ready = binary_ops_utils.translate_row_col_to_cell(row, col)
 
     def get_en_passant(self):
         return self.en_passant_ready
@@ -198,7 +197,7 @@ class Board:
             else:
                 return PieceType.KNIGHT
 
-    def update_pawn_moves(self):
+    def __update_pawn_moves__(self):
         white_moves = []
         black_moves = []
         for i in range(8):
@@ -219,20 +218,23 @@ class Board:
         self.pawn_moves.append(white_moves)
         self.pawn_moves.append(black_moves)
 
-    def get_pawn_moves(self, cell: int, is_white: bool):
+    def get_pawn_captures(self, cell: int, is_white: bool):
         captures = self.pawn_moves[0] if is_white else self.pawn_moves[1]
-        board = self.black_board if is_white else self.white_board
+        return captures[cell]
+
+    def get_pawn_moves(self, cell: int, is_white: bool):
         pawn_advancement = 8 if is_white else -8
         start_row = 1 if is_white else 6
         en_passant_row = 4 if is_white else 5
+        board = self.black_board if is_white else self.white_board
         row = cell / 8
-        captures = captures[cell] & board
+        captures = self.get_pawn_captures(cell, is_white) & board
         forward = cell + pawn_advancement
         moves = 0
-        if 0 <= forward < 64:
+        if (forward & 0x40) == 0:
             moves = binary_ops_utils.switch_cell_bit(0, forward, True)
             forward = forward + pawn_advancement
-            if 0 <= forward < 64:
+            if (forward & 0x40) == 0:
                 moves = binary_ops_utils.switch_cell_bit(moves, forward, row == start_row)
         moves = moves & (~self.board)
         if self.en_passant_ready != 0 and row == en_passant_row:
@@ -243,7 +245,7 @@ class Board:
 
         return moves | captures
 
-    def update_knight_moves(self):
+    def __update_knight_moves__(self):
         moves = [(2, 1), (2, -1), (-2, 1), (-2, -1),
                  (1, 2), (-1, 2), (1, -2), (-1, -2)]
         for i in range(8):
@@ -258,7 +260,7 @@ class Board:
                     val = binary_ops_utils.switch_cell_bit(val, option[0] * 8 + option[1], True)
                 self.knight_moves.append(val)
 
-    def update_king_moves(self):
+    def __update_king_moves__(self):
         moves = [(0, 1), (0, -1), (1, 1), (-1, -1),
                  (1, -1), (-1, 1), (1, 0), (-1, 0)]
         for i in range(8):
@@ -287,7 +289,7 @@ class Board:
         board = self.white_board if is_white else self.black_board
         return self.knight_moves[cell] & (~board)
 
-    def update_distances(self):
+    def __update_distances__(self):
         for i in range(8):
             for j in range(8):
                 north = 7 - i
@@ -298,6 +300,7 @@ class Board:
                                                 min(north, west), min(south, east), min(north, east), min(south, west)))
 
     def get_vertical_cell_moves(self, cell: int, piece: PieceType, is_white: bool):
+        # TODO: Optimize to use logical operations and masks if necessary
         start = 4 if piece == PieceType.BISHOP else 0
         end = 4 if piece == PieceType.ROOK else 8
         result = 0
@@ -327,5 +330,90 @@ class Board:
             return self.get_knight_cell_moves(cell, is_white)
         return self.get_vertical_cell_moves(cell, piece, is_white)
 
+    def get_moves_by_piece_(self, cell: int, is_white: bool, piece: PieceType):
+        if piece == PieceType.PAWN:
+            return self.get_pawn_moves(cell, is_white)
+        elif piece == PieceType.KING:
+            return self.get_king_cell_moves(cell)
+        elif piece == PieceType.KNIGHT:
+            return self.get_knight_cell_moves(cell, is_white)
+        return self.get_vertical_cell_moves(cell, piece, is_white)
+
     def get_distances(self):
         return self.vertical_distances
+
+    def __update_attacker__(self, is_white):
+        piece_dict = self.get_pieces_dict(is_white)
+        index = 0 if is_white else 1
+        for piece in piece_dict.keys():
+            for cell in piece_dict[piece]:
+                moves = self.get_moves_by_piece_(cell, is_white, piece)
+                self.attackers[index] |= moves
+
+    def get_attacks(self, is_white: bool):
+        return self.attackers[0] if is_white else self.attackers[1]
+
+    def __update_pins_and_checks__(self, is_white: bool):
+        pieces_dict = self.get_pieces_dict(is_white)
+        enemy_dict = self.get_pieces_dict(not is_white)
+        king_cell = pieces_dict[PieceType.KING][0]
+        start = 0
+        end = 8
+        if len(enemy_dict[PieceType.QUEEN]) == 0:
+            start = 0 if len(enemy_dict[PieceType.ROOK]) != 0 else 4
+            end = 8 if len(enemy_dict[PieceType.BISHOP]) != 0 else 4
+
+        for direction_index in range(start, end):
+            offset = self.directions[direction_index]
+            mask = 0
+            is_diagonal = (direction_index & 4) != 0
+            num = self.vertical_distances[king_cell][direction_index]
+            friend_ray = False
+            for i in range(num):
+                destination = king_cell + offset * (i + 1)
+                mask |= 1 << destination
+                if not self.is_cell_empty(destination):
+                    if self.is_cell_colored(destination, is_white):
+                        if friend_ray:
+                            break
+                        else:
+                            friend_ray = True
+                    else:
+                        can_diagonal = ((1 << destination) & self.sliding != 0) and (
+                            not self.is_type_of(destination, PieceType.ROOK))
+                        can_vertical = ((1 << destination) & self.sliding != 0) and (
+                            not self.is_type_of(destination, PieceType.BISHOP))
+                        threat = (is_diagonal and can_diagonal) or ((not is_diagonal) and can_vertical)
+                        if threat:
+                            if friend_ray:
+                                self.pin_in_position = True
+                                self.pin_map |= mask
+                            else:
+                                self.check_map |= mask
+                                self.position_in_double_check = self.position_in_check
+                                self.position_in_check = True
+                        break
+            if self.position_in_double_check:
+                return
+
+        for cell in enemy_dict[PieceType.KNIGHT]:
+            if self.knight_moves[cell] & (1 << king_cell) != 0:
+                self.check_map = binary_ops_utils.switch_cell_bit(self.check_map, cell, True)
+                self.position_in_double_check = self.position_in_check
+                self.position_in_check = True
+                return
+
+        for cell in enemy_dict[PieceType.PAWN]:
+            if self.get_pawn_captures(cell, is_white) & (1 << king_cell) != 0:
+                self.check_map = binary_ops_utils.switch_cell_bit(self.check_map, cell, True)
+                self.position_in_double_check = self.position_in_check
+                self.position_in_check = True
+                return
+
+    def update_round(self, en_passant_cell: int):
+        self.en_passant_ready = en_passant_cell
+        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
+            PieceType.ROOK]
+        self.__update_attacker__(self.is_white)
+        self.is_white = not self.is_white
+        self.__update_pins_and_checks__(self.is_white)
