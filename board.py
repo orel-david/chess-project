@@ -347,11 +347,10 @@ class Board:
         index = 0 if is_white else 1
         for piece in piece_dict.keys():
             for cell in piece_dict[piece]:
-                moves = self.get_moves_by_piece_(cell, is_white, piece)
-                self.attackers[index] |= moves
+                self.attackers[index] |= self.get_moves_by_piece_(cell, is_white, piece)
 
     def get_attacks(self, is_white: bool):
-        return self.attackers[0] if is_white else self.attackers[1]
+        return self.attackers[1] if is_white else self.attackers[0]
 
     def __update_pins_and_checks__(self, is_white: bool):
         pieces_dict = self.get_pieces_dict(is_white)
