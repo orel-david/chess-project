@@ -76,6 +76,7 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
                     if not board.is_cell_empty(cell_tmp):
                         return False
                 return True
+        return False
 
     if not board.is_pinned(cell, is_white)[0]:
         return True
