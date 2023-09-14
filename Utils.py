@@ -1,5 +1,6 @@
 import binary_ops_utils
 from board import Board
+from chess_exceptions import NonLegal, KingUnderCheck
 from piece import PieceType
 
 
@@ -139,39 +140,32 @@ def can_castle(board: Board, is_white: bool, move: Move):
 
 
 # TODO:CONTINUE FROM HERE
-# def castle(board: Board, is_white: bool, move: Move):
-#     if move.castle is False:
-#         raise NonLegal()
-#     if is_under_check(board, is_white):
-#         raise KingUnderCheck()
-#
-#     row = 1 if is_white else 8
-#     col = 8 if move.is_king_side else 1
-#     king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
-#     king = king_cell.get_cell_piece()
-#     rook_cell = board.get_cell(row, col)
-#     rook = rook_cell.get_cell_piece()
-#     if king.moved or rook_cell.get_cell_type() != PieceType.ROOK or rook.moved:
-#         raise NonLegal()
-#
-#     direction = 1 if move.is_king_side else -1
-#     moves = [Move(row, 5 + direction), Move(row, 5 + 2 * direction)]
-#     cond = (lambda m: board.get_cell(m.row, m.col).is_empty() and (
-#         not is_threatened(board, is_white, board.get_cell(m.row, m.col))))
-#     legal = all(cond(m) for m in moves)
-#     if legal:
-#         king_cell.cell_piece = Piece(False)
-#         rook_cell.cell_piece = Piece(False)
-#         king.moved = True
-#         rook.moved = True
-#         board.get_cell(row, moves[1].col).cell_piece = king
-#         board.get_cell(row, moves[0].col).cell_piece = rook
-#         pieces_dict = board.get_pieces_dict(is_white)
-#         pieces_dict[PieceType.KING] = [board.get_cell(row, moves[1].col)]
-#         pieces_dict[PieceType.ROOK] = [board.get_cell(row, moves[0].col) if c == rook_cell else c for c in
-#                                        pieces_dict[PieceType.ROOK]]
-#
-#
+def castle(board: Board, is_white: bool, move: Move, valid=False):
+    if move.castle is False:
+        raise NonLegal()
+    if (not valid) and is_under_check(board):
+        raise KingUnderCheck()
+
+    if not can_castle(board, is_white, move):
+        raise NonLegal()
+
+    row = 1 if is_white else 8
+    col = 8 if move.is_king_side else 1
+    side = -1 if move.is_king_side else 1
+    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
+    rook_cell = binary_ops_utils.translate_row_col_to_cell(row, col)
+
+    board.remove_cell_piece(king_cell, PieceType.KING, is_white)
+    board.remove_cell_piece(rook_cell, PieceType.ROOK, is_white)
+
+    if is_white:
+        board.castling_options = ''.join([c for c in board.castling_options if c.islower()])
+    else:
+        board.castling_options = ''.join([c for c in board.castling_options if c.isupper()])
+    board.set_cell_piece(move.target, PieceType.KING, is_white)
+    board.set_cell_piece(move.target + side, PieceType.ROOK, is_white)
+
+
 # def update_en_passant(board: Board, cell: Cell, move: Move):
 #     if move.is_en_passant:
 #         pawn_advancement = 1 if cell.is_white() else -1
@@ -222,35 +216,10 @@ def can_castle(board: Board, is_white: bool, move: Move):
 #     pieces_dict[PieceType.PAWN] = [c for c in pieces_dict[PieceType.PAWN] if c != cell]
 #
 #
-# def check_stops_check(board: Board, cell: Cell, move: Move):
-#     piece_dict = board.get_pieces_dict(cell.is_white())
-#     enemy_dict = board.get_pieces_dict(not cell.is_white())
-#     king_cell = piece_dict[PieceType.KING][0]
-#     curr_cell = board.get_cell(move.row, move.col)
-#     prev_piece = curr_cell.get_cell_piece()
-#     curr_cell.cell_piece = cell.cell_piece
-#     cell.cell_piece = Piece(False)
-#     if not curr_cell.is_empty():
-#         piece_dict[curr_cell.get_cell_type()] = [c if c != cell else curr_cell for
-#                                                  c in piece_dict[curr_cell.get_cell_type()]]
-#     if prev_piece.piece_type != PieceType.EMPTY:
-#         enemy_dict[prev_piece.piece_type] = [c for c in enemy_dict[prev_piece.piece_type] if
-#                                              c != curr_cell]
-#     result = is_under_check(board, curr_cell.is_white())
-#     if prev_piece.piece_type != PieceType.EMPTY:
-#         enemy_dict[prev_piece.piece_type].append(curr_cell)
-#     if not curr_cell.is_empty():
-#         piece_dict[curr_cell.get_cell_type()] = [c if c != curr_cell else cell for
-#                                                  c in piece_dict[curr_cell.get_cell_type()]]
-#     piece_dict[PieceType.KING] = [king_cell]
-#     cell.cell_piece = curr_cell.cell_piece
-#     curr_cell.cell_piece = prev_piece
-#     return not result
-#
-#
 # def make_move(board: Board, cell: Cell, move: Move, valid=False):
 #     if move.castle:
 #         castle(board, cell.is_white(), move)
+#         return
 #
 #     if move.promotion != PieceType.EMPTY:
 #         promote(board, cell, move)
@@ -272,11 +241,12 @@ def can_castle(board: Board, is_white: bool, move: Move):
 def get_castle_moves(board: Board, is_white: bool):
     moves = []
     row = 1 if is_white else 8
-    move_1 = Move(row, 7)
+    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
+    move_1 = Move(king_cell, binary_ops_utils.translate_row_col_to_cell(row, 7))
     move_1.set_castle(True)
     if can_castle(board, is_white, move_1):
         moves.append(move_1)
-    move_2 = Move(row, 3)
+    move_2 = Move(king_cell, binary_ops_utils.translate_row_col_to_cell(row, 3))
     move_2.set_castle(False)
     if can_castle(board, is_white, move_2):
         moves.append(move_2)
