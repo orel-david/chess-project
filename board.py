@@ -20,7 +20,7 @@ class Board:
     sliding = 0
     sliding_attacks = 0
     attackers = [0, 0]
-    #change main key to be index
+    # change main key to be index
     attackers_maps = {PieceType.PAWN: [0, 0], PieceType.QUEEN: [0, 0], PieceType.BISHOP: [0, 0],
                       PieceType.KNIGHT: [0, 0],
                       PieceType.KING: [0, 0], PieceType.ROOK: [0, 0]}
@@ -427,7 +427,42 @@ class Board:
                 return
 
     def is_pinned(self, cell: int, is_white: bool):
-        pass
+        if cell & self.sliding_attacks == 0:
+            return False
+
+        king_cell = self.get_pieces_dict(is_white)[PieceType.KING][0]
+        if cell == king_cell:
+            return False
+
+        king_row, king_col = binary_ops_utils.translate_cell_to_row_col(king_cell)
+        cell_row, cell_col = binary_ops_utils.translate_cell_to_row_col(cell)
+        row_diff = cell_row - king_row
+        col_diff = cell_col - king_col
+        if col_diff == 0:
+            step = 8 if king_row > cell_row else -8
+            for cell_tmp in range(cell, king_cell, step):
+                if not self.is_cell_empty(cell_tmp):
+                    return False
+
+        if row_diff == 0:
+            step = 1 if king_col > cell_col else -1
+            for cell_tmp in range(cell, king_cell, step):
+                if not self.is_cell_empty(cell_tmp):
+                    return False
+
+        if row_diff == col_diff:
+            step = 9 if king_col > cell_col else -9
+            for cell_tmp in range(cell, king_cell, step):
+                if not self.is_cell_empty(cell_tmp):
+                    return False
+
+        if row_diff == -col_diff:
+            step = 7 if king_row > cell_row else -7
+            for cell_tmp in range(cell, king_cell, step):
+                if not self.is_cell_empty(cell_tmp):
+                    return False
+
+        return True
 
     def update_round(self, target_cell, piece: PieceType, enables_en_passant=False):
         self.en_passant_ready = target_cell if enables_en_passant else 0
