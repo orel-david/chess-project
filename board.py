@@ -19,6 +19,9 @@ class Board:
     directions = [1, -1, 8, -8, 7, -7, 9, -9]
     sliding = 0
     attackers = [0, 0]
+    attackers_maps = {PieceType.PAWN: [0, 0], PieceType.QUEEN: [0, 0], PieceType.BISHOP: [0, 0],
+                      PieceType.KNIGHT: [0, 0],
+                      PieceType.KING: [0, 0], PieceType.ROOK: [0, 0]}
     pin_map = 0
     check_map = 0
     position_in_check = False
@@ -275,8 +278,8 @@ class Board:
                     val = binary_ops_utils.switch_cell_bit(val, option[0] * 8 + option[1], True)
                 self.king_moves.append(val)
 
-    def get_king_cell_moves(self, cell: int):
-        board = self.white_board if self.is_white else self.black_board
+    def get_king_cell_moves(self, cell: int, is_white: bool):
+        board = self.white_board if is_white else self.black_board
         return self.king_moves[cell] & (~board)
 
     def get_knight_moves(self, row: int, col: int, is_white: bool):
@@ -326,7 +329,7 @@ class Board:
         if piece == PieceType.PAWN:
             return self.get_pawn_moves(cell, is_white)
         elif piece == PieceType.KING:
-            return self.get_king_cell_moves(cell)
+            return self.get_king_cell_moves(cell, is_white)
         elif piece == PieceType.KNIGHT:
             return self.get_knight_cell_moves(cell, is_white)
         return self.get_vertical_cell_moves(cell, piece, is_white)
@@ -335,7 +338,7 @@ class Board:
         if piece == PieceType.PAWN:
             return self.get_pawn_moves(cell, is_white)
         elif piece == PieceType.KING:
-            return self.get_king_cell_moves(cell)
+            return self.get_king_cell_moves(cell, is_white)
         elif piece == PieceType.KNIGHT:
             return self.get_knight_cell_moves(cell, is_white)
         return self.get_vertical_cell_moves(cell, piece, is_white)
@@ -343,12 +346,39 @@ class Board:
     def get_distances(self):
         return self.vertical_distances
 
-    def __update_attacker__(self, is_white):
+    def __update_attacker__(self, is_white, piece=PieceType.EMPTY, new_cell=0):
         piece_dict = self.get_pieces_dict(is_white)
         index = 0 if is_white else 1
-        for piece in piece_dict.keys():
+        self.attackers[index] = 0
+        if piece == PieceType.EMPTY:
+            for piece in piece_dict.keys():
+                self.attackers_maps[piece][index] = 0
+                for cell in piece_dict[piece]:
+                    self.attackers_maps[piece][index] |= self.get_moves_by_piece_(cell, is_white, piece)
+        else:
+            self.attackers_maps[piece][index] = 0
             for cell in piece_dict[piece]:
-                self.attackers[index] |= self.get_moves_by_piece_(cell, is_white, piece)
+                self.attackers_maps[piece][index] |= self.get_moves_by_piece_(cell, is_white, piece)
+            if self.attackers_maps[PieceType.QUEEN][index] & new_cell != 0:
+                self.attackers_maps[PieceType.QUEEN][index] = 0
+                for cell in piece_dict[PieceType.QUEEN]:
+                    self.attackers_maps[PieceType.QUEEN][index] |= self.get_moves_by_piece_(cell, is_white,
+                                                                                            PieceType.QUEEN)
+            if self.attackers_maps[PieceType.BISHOP][index] & new_cell != 0:
+                self.attackers_maps[PieceType.BISHOP][index] = 0
+                for cell in piece_dict[PieceType.BISHOP]:
+                    self.attackers_maps[PieceType.BISHOP][index] |= self.get_moves_by_piece_(cell, is_white,
+                                                                                             PieceType.BISHOP)
+            if self.attackers_maps[PieceType.ROOK][index] & new_cell != 0:
+                self.attackers_maps[PieceType.ROOK][index] = 0
+                for cell in piece_dict[PieceType.ROOK]:
+                    self.attackers_maps[PieceType.ROOK][index] |= self.get_moves_by_piece_(cell, is_white,
+                                                                                           PieceType.ROOK)
+        self.attackers[index] = self.attackers_maps[PieceType.PAWN][index] | self.attackers_maps[PieceType.KING][index]
+        self.attackers[index] |= self.attackers_maps[PieceType.QUEEN][index]
+        self.attackers[index] |= self.attackers_maps[PieceType.ROOK][index]
+        self.attackers[index] |= self.attackers_maps[PieceType.KNIGHT][index]
+        self.attackers[index] |= self.attackers_maps[PieceType.BISHOP][index]
 
     def get_attacks(self, is_white: bool):
         return self.attackers[1] if is_white else self.attackers[0]
@@ -363,6 +393,7 @@ class Board:
             start = 0 if len(enemy_dict[PieceType.ROOK]) != 0 else 4
             end = 8 if len(enemy_dict[PieceType.BISHOP]) != 0 else 4
 
+        #TODO: MUST BE OPTIMIZED
         for direction_index in range(start, end):
             offset = self.directions[direction_index]
             mask = 0
@@ -403,17 +434,27 @@ class Board:
                 self.position_in_check = True
                 return
 
+        king_row = king_cell / 8
+        # we check the enemies pawns
+        pawn_advancement = -1 if is_white else 1
+        start_row = 6 if is_white else 1
+        index = 1 if is_white else 0
+        if (1 << king_cell) & self.attackers_maps[PieceType.PAWN][index] == 0:
+            return
         for cell in enemy_dict[PieceType.PAWN]:
+            pawn_row = cell / 8
+            if (pawn_row / 8) + pawn_advancement != king_row and (pawn_row != start_row):
+                continue
             if self.get_pawn_captures(cell, is_white) & (1 << king_cell) != 0:
                 self.check_map = binary_ops_utils.switch_cell_bit(self.check_map, cell, True)
                 self.position_in_double_check = self.position_in_check
                 self.position_in_check = True
                 return
 
-    def update_round(self, en_passant_cell: int):
-        self.en_passant_ready = en_passant_cell
+    def update_round(self, target_cell, piece: PieceType, enables_en_passant=False):
+        self.en_passant_ready = target_cell if enables_en_passant else 0
         self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
             PieceType.ROOK]
-        self.__update_attacker__(self.is_white)
+        self.__update_attacker__(self.is_white, piece, target_cell)
         self.is_white = not self.is_white
         self.__update_pins_and_checks__(self.is_white)
