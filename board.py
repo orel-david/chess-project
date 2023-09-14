@@ -390,13 +390,15 @@ class Board:
         enemy_dict = self.get_pieces_dict(not is_white)
         king_cell = pieces_dict[PieceType.KING][0]
         index = 1 if is_white else 0
-
+        self.pin_map = 0
+        self.position_in_check = False
+        self.check_map = 0
         board = self.white_board if is_white else self.black_board
 
         targets = binary_ops_utils.get_turned_bits(self.king_moves[king_cell] & (~board))
         for buffer_cell in targets:
             if self.sliding_attacks & (1 << buffer_cell) != 0:
-                self.pin_map |= 1 << buffer_cell
+                self.pin_map = binary_ops_utils.get_direction(buffer_cell, king_cell)
                 self.position_in_double_check = self.position_in_check
                 self.position_in_check = True
 
@@ -428,41 +430,21 @@ class Board:
 
     def is_pinned(self, cell: int, is_white: bool):
         if cell & self.sliding_attacks == 0:
-            return False
+            return False, 0
 
         king_cell = self.get_pieces_dict(is_white)[PieceType.KING][0]
         if cell == king_cell:
-            return False
+            return False, 0
 
-        king_row, king_col = binary_ops_utils.translate_cell_to_row_col(king_cell)
-        cell_row, cell_col = binary_ops_utils.translate_cell_to_row_col(cell)
-        row_diff = cell_row - king_row
-        col_diff = cell_col - king_col
-        if col_diff == 0:
-            step = 8 if king_row > cell_row else -8
-            for cell_tmp in range(cell, king_cell, step):
-                if not self.is_cell_empty(cell_tmp):
-                    return False
+        step = binary_ops_utils.get_direction(cell, king_cell) == 0
+        if step == 0:
+            return False, 0
 
-        if row_diff == 0:
-            step = 1 if king_col > cell_col else -1
-            for cell_tmp in range(cell, king_cell, step):
-                if not self.is_cell_empty(cell_tmp):
-                    return False
+        for cell_tmp in range(cell, king_cell, step):
+            if not self.is_cell_empty(cell_tmp):
+                return False, 0
 
-        if row_diff == col_diff:
-            step = 9 if king_col > cell_col else -9
-            for cell_tmp in range(cell, king_cell, step):
-                if not self.is_cell_empty(cell_tmp):
-                    return False
-
-        if row_diff == -col_diff:
-            step = 7 if king_row > cell_row else -7
-            for cell_tmp in range(cell, king_cell, step):
-                if not self.is_cell_empty(cell_tmp):
-                    return False
-
-        return True
+        return True, 0
 
     def update_round(self, target_cell, piece: PieceType, enables_en_passant=False):
         self.en_passant_ready = target_cell if enables_en_passant else 0
