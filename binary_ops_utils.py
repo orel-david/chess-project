@@ -19,7 +19,7 @@ def translate_row_col_to_cell(row: int, col: int):
 
 
 def translate_cell_to_row_col(cell: int):
-    return cell / 8, cell % 8
+    return int(cell / 8), cell % 8
 
 
 def get_turned_bits(word: int):

@@ -18,7 +18,9 @@ class Board:
     vertical_distances = []
     directions = [1, -1, 8, -8, 7, -7, 9, -9]
     sliding = 0
+    sliding_attacks = 0
     attackers = [0, 0]
+    #change main key to be index
     attackers_maps = {PieceType.PAWN: [0, 0], PieceType.QUEEN: [0, 0], PieceType.BISHOP: [0, 0],
                       PieceType.KNIGHT: [0, 0],
                       PieceType.KING: [0, 0], PieceType.ROOK: [0, 0]}
@@ -26,8 +28,6 @@ class Board:
     check_map = 0
     position_in_check = False
     position_in_double_check = False
-    pin_in_position = False
-
     piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
                   PieceType.KING: 0, PieceType.ROOK: 0}
 
@@ -230,7 +230,7 @@ class Board:
         start_row = 1 if is_white else 6
         en_passant_row = 4 if is_white else 5
         board = self.black_board if is_white else self.white_board
-        row = cell / 8
+        row = int(cell / 8)
         captures = self.get_pawn_captures(cell, is_white) & board
         forward = cell + pawn_advancement
         moves = 0
@@ -374,11 +374,13 @@ class Board:
                 for cell in piece_dict[PieceType.ROOK]:
                     self.attackers_maps[PieceType.ROOK][index] |= self.get_moves_by_piece_(cell, is_white,
                                                                                            PieceType.ROOK)
+        sliding_attacks = 0
+        sliding_attacks |= self.attackers_maps[PieceType.QUEEN][index]
+        sliding_attacks |= self.attackers_maps[PieceType.ROOK][index]
+        sliding_attacks |= self.attackers_maps[PieceType.BISHOP][index]
         self.attackers[index] = self.attackers_maps[PieceType.PAWN][index] | self.attackers_maps[PieceType.KING][index]
-        self.attackers[index] |= self.attackers_maps[PieceType.QUEEN][index]
-        self.attackers[index] |= self.attackers_maps[PieceType.ROOK][index]
         self.attackers[index] |= self.attackers_maps[PieceType.KNIGHT][index]
-        self.attackers[index] |= self.attackers_maps[PieceType.BISHOP][index]
+        self.attackers[index] |= self.sliding_attacks
 
     def get_attacks(self, is_white: bool):
         return self.attackers[1] if is_white else self.attackers[0]
@@ -387,43 +389,17 @@ class Board:
         pieces_dict = self.get_pieces_dict(is_white)
         enemy_dict = self.get_pieces_dict(not is_white)
         king_cell = pieces_dict[PieceType.KING][0]
-        start = 0
-        end = 8
-        if len(enemy_dict[PieceType.QUEEN]) == 0:
-            start = 0 if len(enemy_dict[PieceType.ROOK]) != 0 else 4
-            end = 8 if len(enemy_dict[PieceType.BISHOP]) != 0 else 4
+        index = 1 if is_white else 0
 
-        #TODO: MUST BE OPTIMIZED
-        for direction_index in range(start, end):
-            offset = self.directions[direction_index]
-            mask = 0
-            is_diagonal = (direction_index & 4) != 0
-            num = self.vertical_distances[king_cell][direction_index]
-            friend_ray = False
-            for i in range(num):
-                destination = king_cell + offset * (i + 1)
-                mask |= 1 << destination
-                if not self.is_cell_empty(destination):
-                    if self.is_cell_colored(destination, is_white):
-                        if friend_ray:
-                            break
-                        else:
-                            friend_ray = True
-                    else:
-                        can_diagonal = ((1 << destination) & self.sliding != 0) and (
-                            not self.is_type_of(destination, PieceType.ROOK))
-                        can_vertical = ((1 << destination) & self.sliding != 0) and (
-                            not self.is_type_of(destination, PieceType.BISHOP))
-                        threat = (is_diagonal and can_diagonal) or ((not is_diagonal) and can_vertical)
-                        if threat:
-                            if friend_ray:
-                                self.pin_in_position = True
-                                self.pin_map |= mask
-                            else:
-                                self.check_map |= mask
-                                self.position_in_double_check = self.position_in_check
-                                self.position_in_check = True
-                        break
+        board = self.white_board if is_white else self.black_board
+
+        targets = binary_ops_utils.get_turned_bits(self.king_moves[king_cell] & (~board))
+        for buffer_cell in targets:
+            if self.sliding_attacks & (1 << buffer_cell) != 0:
+                self.pin_map |= 1 << buffer_cell
+                self.position_in_double_check = self.position_in_check
+                self.position_in_check = True
+
             if self.position_in_double_check:
                 return
 
@@ -434,22 +410,24 @@ class Board:
                 self.position_in_check = True
                 return
 
-        king_row = king_cell / 8
+        king_row = int(king_cell / 8)
         # we check the enemies pawns
         pawn_advancement = -1 if is_white else 1
         start_row = 6 if is_white else 1
-        index = 1 if is_white else 0
         if (1 << king_cell) & self.attackers_maps[PieceType.PAWN][index] == 0:
             return
         for cell in enemy_dict[PieceType.PAWN]:
-            pawn_row = cell / 8
-            if (pawn_row / 8) + pawn_advancement != king_row and (pawn_row != start_row):
+            pawn_row = int(cell / 8)
+            if pawn_row + pawn_advancement != king_row and (pawn_row != start_row):
                 continue
             if self.get_pawn_captures(cell, is_white) & (1 << king_cell) != 0:
                 self.check_map = binary_ops_utils.switch_cell_bit(self.check_map, cell, True)
                 self.position_in_double_check = self.position_in_check
                 self.position_in_check = True
                 return
+
+    def is_pinned(self, cell: int, is_white: bool):
+        pass
 
     def update_round(self, target_cell, piece: PieceType, enables_en_passant=False):
         self.en_passant_ready = target_cell if enables_en_passant else 0
