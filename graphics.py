@@ -166,6 +166,7 @@ class GUI:
         # draw the pieces
         row = 8 if color else 1
         direction = 1 if color else -1
+        col += 1
         self.draw_at_cell(self.pieces[color][PieceType.QUEEN], binary_ops_utils.translate_row_col_to_cell(row, col))
         self.draw_at_cell(self.pieces[color][PieceType.KNIGHT],
                           binary_ops_utils.translate_row_col_to_cell(row - direction, col))

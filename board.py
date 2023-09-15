@@ -374,10 +374,10 @@ class Board:
                 for cell in piece_dict[PieceType.ROOK]:
                     self.attackers_maps[PieceType.ROOK][index] |= self.get_moves_by_piece_(cell, is_white,
                                                                                            PieceType.ROOK)
-        sliding_attacks = 0
-        sliding_attacks |= self.attackers_maps[PieceType.QUEEN][index]
-        sliding_attacks |= self.attackers_maps[PieceType.ROOK][index]
-        sliding_attacks |= self.attackers_maps[PieceType.BISHOP][index]
+        self.sliding_attacks = 0
+        self.sliding_attacks |= self.attackers_maps[PieceType.QUEEN][index]
+        self.sliding_attacks |= self.attackers_maps[PieceType.ROOK][index]
+        self.sliding_attacks |= self.attackers_maps[PieceType.BISHOP][index]
         self.attackers[index] = self.attackers_maps[PieceType.PAWN][index] | self.attackers_maps[PieceType.KING][index]
         self.attackers[index] |= self.attackers_maps[PieceType.KNIGHT][index]
         self.attackers[index] |= self.sliding_attacks
