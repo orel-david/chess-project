@@ -190,7 +190,6 @@ class GUI:
 
     def perform_move(self, board, row, col, promote=False):
         target = binary_ops_utils.translate_row_col_to_cell(row, col)
-        print("target, {}".format(target))
         self.move = Move(self.origin, target)
         if not self.is_in_moves(self.move):
             self.move = None
@@ -257,7 +256,7 @@ class GUI:
 
             Utils.make_move(board, user_input)
             self.white = not self.white
-            
+
         except NonLegal:
             print("Illegal move, try again")
         except KingSacrifice:

@@ -181,7 +181,7 @@ def promote(board: Board, move: Move):
         raise NonLegal()
 
     board.remove_cell_piece(move.cell, PieceType.PAWN, board.is_white)
-    board.remove_cell_piece(move.cell, move.promotion, board.is_white)
+    board.set_cell_piece(move.cell, move.promotion, board.is_white)
 
 
 def make_move(board: Board, move: Move, valid=True):
@@ -235,7 +235,7 @@ def make_move(board: Board, move: Move, valid=True):
                 elif rook_col == 7:
                     board.castling_options = ''.join([c for c in board.castling_options if c != 'k'])
     board.remove_cell_piece(move.cell, piece, board.is_white)
-    board.set_cell_piece(move.cell, piece, board.is_white)
+    board.set_cell_piece(move.target, piece, board.is_white)
     board.update_round(move.target, piece, enable_en_passant)
 
 
