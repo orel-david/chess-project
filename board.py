@@ -228,7 +228,7 @@ class Board:
     def get_pawn_moves(self, cell: int, is_white: bool):
         pawn_advancement = 8 if is_white else -8
         start_row = 1 if is_white else 6
-        en_passant_row = 4 if is_white else 5
+        en_passant_row = 5 if is_white else 4
         board = self.black_board if is_white else self.white_board
         row = int(cell / 8)
         captures = self.get_pawn_captures(cell, is_white) & board
@@ -453,3 +453,4 @@ class Board:
         self.__update_attacker__(self.is_white, piece, target_cell)
         self.is_white = not self.is_white
         self.__update_pins_and_checks__(self.is_white)
+        self.count += 1

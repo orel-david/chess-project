@@ -10,7 +10,6 @@ class Move:
     target: int
     castle: bool
     is_king_side: bool
-    is_en_passant: bool
     promotion: PieceType
 
     def __init__(self, cell, tar):
@@ -48,6 +47,11 @@ def get_all_legal_moves(board: Board, cell: int, piece: PieceType, is_white: boo
     for target in targets:
         move = Move(cell, target)
         if condition(board, move, piece, is_white):
+            if piece == PieceType.PAWN:
+                promotion_rank = 7 if board.is_white else 0
+                if int(target / 8) == promotion_rank:
+                    moves += get_promotion_moves(move)
+                    continue
             moves.append(move)
 
     if board.is_type_of(cell, PieceType.KING):
@@ -57,6 +61,9 @@ def get_all_legal_moves(board: Board, cell: int, piece: PieceType, is_white: boo
 
 
 def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
+    if piece == PieceType.EMPTY:
+        return False
+
     if board.position_in_double_check and piece != PieceType.KING:
         return False
 
@@ -166,76 +173,71 @@ def castle(board: Board, is_white: bool, move: Move, valid=False):
     board.set_cell_piece(move.target + side, PieceType.ROOK, is_white)
 
 
-# def update_en_passant(board: Board, cell: Cell, move: Move):
-#     if move.is_en_passant:
-#         pawn_advancement = 1 if cell.is_white() else -1
-#         enemy = board.get_cell(move.row - pawn_advancement, move.col)
-#         enemy.cell_piece = Piece(False)
-#         enemy_dict = board.get_pieces_dict(not cell.is_white())
-#         enemy_dict[PieceType.PAWN] = [c for c in enemy_dict[PieceType.PAWN] if c != enemy]
-#     if board.en_passant_ready is not None:
-#         board.en_passant_ready.en_passant = False
-#         board.en_passant_ready = None
-#
-#
-# def update_piece(board: Board, cell: Cell, move: Move, origin_cell: Cell):
-#     if cell.get_cell_type() == PieceType.KING or cell.get_cell_type() == PieceType.ROOK:
-#         cell.get_cell_piece().moved = True
-#
-#     if cell.get_cell_type() == PieceType.PAWN:
-#         board.count = 0
-#         pawn = cell.get_cell_piece()
-#         pawn.start = False
-#         pawn.en_passant = True if abs(origin_cell.get_row() - move.row) == 2 else False
-#         if pawn.en_passant:
-#             board.en_passant_ready = pawn
-#     board.count = board.count + 1
-#
-#
-# def promote(board: Board, cell: Cell, move: Move):
-#     if move.promotion == PieceType.EMPTY:
-#         raise NonLegal()
-#     if cell.get_cell_type() != PieceType.PAWN:
-#         raise NonLegal()
-#     promotion_rank = 8 if cell.is_white() else 1
-#     if move.row != promotion_rank:
-#         raise NonLegal()
-#
-#     pieces_dict = board.get_pieces_dict(cell.is_white())
-#     color = cell.is_white()
-#     if move.promotion == PieceType.ROOK:
-#         piece = pieces.rook.Rook(color)
-#     elif move.promotion == PieceType.BISHOP:
-#         piece = pieces.bishop.Bishop(color)
-#     elif move.promotion == PieceType.KNIGHT:
-#         piece = pieces.knight.Knight(color)
-#     else:
-#         piece = pieces.queen.Queen(color)
-#     cell.cell_piece = piece
-#     pieces_dict[move.promotion].append(cell)
-#     pieces_dict[PieceType.PAWN] = [c for c in pieces_dict[PieceType.PAWN] if c != cell]
-#
-#
-# def make_move(board: Board, cell: Cell, move: Move, valid=False):
-#     if move.castle:
-#         castle(board, cell.is_white(), move)
-#         return
-#
-#     if move.promotion != PieceType.EMPTY:
-#         promote(board, cell, move)
-#
-#     target_cell = board.get_cell(move.row, move.col)
-#     if target_cell.get_cell_type() != PieceType.EMPTY:
-#         board.count = 0
-#         pieces_dict = board.get_pieces_dict(target_cell.is_white())
-#         pieces_dict[target_cell.get_cell_type()] = [c for c in pieces_dict[target_cell.get_cell_type()] if
-#                                                     c != target_cell]
-#     pieces_dict = board.get_pieces_dict(cell.is_white())
-#     pieces_dict[cell.get_cell_type()] = [target_cell if c == cell else c for c in pieces_dict[cell.get_cell_type()]]
-#     target_cell.cell_piece = cell.get_cell_piece()
-#     cell.cell_piece = Piece(False)
-#     update_en_passant(board, target_cell, move)
-#     update_piece(board, target_cell, move, cell)
+def promote(board: Board, move: Move):
+    if move.promotion == PieceType.EMPTY:
+        raise NonLegal()
+
+    promotion_rank = 7 if board.is_white else 0
+    if int(move.target / 8) != promotion_rank:
+        raise NonLegal()
+
+    board.remove_cell_piece(move.cell, PieceType.PAWN, board.is_white)
+    board.remove_cell_piece(move.cell, move.promotion, board.is_white)
+
+
+def make_move(board: Board, move: Move, valid=True):
+    piece = board.get_cell_type(move.cell)
+    enable_en_passant = False
+    if move.castle:
+        castle(board, board.is_white, move)
+        return
+
+    if move.promotion != PieceType.EMPTY and piece == PieceType.PAWN:
+        promote(board, move)
+
+    if not valid:
+        if not condition(board, move, piece, board.is_white):
+            raise NonLegal()
+
+    target_type = board.get_cell_type(move.target)
+    if target_type != PieceType.EMPTY:
+        board.count = 0
+        board.remove_cell_piece(move.target, target_type, not board.is_white)
+
+    if piece == PieceType.PAWN:
+        board.count = 0
+        diff = abs(move.cell - move.target)
+        # If move 2 rows it can be subject to en passant
+        if diff == 16:
+            enable_en_passant = True
+
+        # Check if en Passant
+        if target_type == PieceType.EMPTY and (abs(move.cell - move.target) % 8 != 0):
+            side = 1 if (move.cell % 8) < (move.target % 8) else -1
+            board.remove_cell_piece(move.cell + side, PieceType.PAWN, not board.is_white)
+    elif piece == PieceType.KING:
+        if board.is_white:
+            board.castling_options = ''.join([c for c in board.castling_options if c.islower()])
+        else:
+            board.castling_options = ''.join([c for c in board.castling_options if c.isupper()])
+
+    elif piece == PieceType.ROOK:
+        rook_row, rook_col = binary_ops_utils.translate_cell_to_row_col(move.cell)
+        if board.is_white:
+            if rook_row == 0:
+                if rook_col == 0:
+                    board.castling_options = ''.join([c for c in board.castling_options if c != 'Q'])
+                elif rook_col == 7:
+                    board.castling_options = ''.join([c for c in board.castling_options if c != 'K'])
+        else:
+            if rook_row == 0:
+                if rook_col == 0:
+                    board.castling_options = ''.join([c for c in board.castling_options if c != 'q'])
+                elif rook_col == 7:
+                    board.castling_options = ''.join([c for c in board.castling_options if c != 'k'])
+    board.remove_cell_piece(move.cell, piece, board.is_white)
+    board.set_cell_piece(move.cell, piece, board.is_white)
+    board.update_round(move.target, piece, enable_en_passant)
 
 
 def get_castle_moves(board: Board, is_white: bool):
@@ -251,6 +253,16 @@ def get_castle_moves(board: Board, is_white: bool):
     if can_castle(board, is_white, move_2):
         moves.append(move_2)
     return moves
+
+
+def get_promotion_moves(move: Move):
+    result = []
+    relevant_pieces = [PieceType.QUEEN, PieceType.ROOK, PieceType.KNIGHT, PieceType.BISHOP]
+    for piece in relevant_pieces:
+        tmp = Move(move.cell, move.target)
+        tmp.set_promotion(piece)
+        result.append(tmp)
+    return result
 
 
 def check_stalemate(board: Board):
