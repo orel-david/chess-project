@@ -20,6 +20,7 @@ class Board:
     sliding = 0
     sliding_attacks = 0
     attackers = [0, 0]
+    pin_in_position = False
     # change main key to be index
     attackers_maps = {PieceType.PAWN: [0, 0], PieceType.QUEEN: [0, 0], PieceType.BISHOP: [0, 0],
                       PieceType.KNIGHT: [0, 0],
@@ -30,6 +31,7 @@ class Board:
     position_in_double_check = False
     piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
                   PieceType.KING: 0, PieceType.ROOK: 0}
+    threats = []
 
     def __init__(self):
         self.black_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
@@ -228,7 +230,7 @@ class Board:
     def get_pawn_moves(self, cell: int, is_white: bool):
         pawn_advancement = 8 if is_white else -8
         start_row = 1 if is_white else 6
-        en_passant_row = 5 if is_white else 4
+        en_passant_row = 4 if is_white else 3
         board = self.black_board if is_white else self.white_board
         row = int(cell / 8)
         captures = self.get_pawn_captures(cell, is_white) & board
@@ -393,17 +395,42 @@ class Board:
         self.pin_map = 0
         self.position_in_check = False
         self.check_map = 0
-        board = self.white_board if is_white else self.black_board
+        start = 0
+        end = 8
+        if len(enemy_dict[PieceType.QUEEN]) == 0:
+            start = 0 if len(enemy_dict[PieceType.ROOK]) != 0 else 4
+            end = 8 if len(enemy_dict[PieceType.BISHOP]) != 0 else 4
 
-        targets = binary_ops_utils.get_turned_bits(self.king_moves[king_cell] & (~board))
-        for buffer_cell in targets:
-            if self.sliding_attacks & (1 << buffer_cell) != 0:
-                self.pin_map = binary_ops_utils.get_direction(buffer_cell, king_cell)
-                self.position_in_double_check = self.position_in_check
-                self.position_in_check = True
-
-            if self.position_in_double_check:
-                return
+        for direction_index in range(start, end):
+            offset = self.directions[direction_index]
+            mask = 0
+            is_diagonal = (direction_index & 4) != 0
+            num = self.vertical_distances[king_cell][direction_index]
+            friend_ray = False
+            for i in range(num):
+                destination = king_cell + offset * (i + 1)
+                mask |= 1 << destination
+                if not self.is_cell_empty(destination):
+                    if self.is_cell_colored(destination, is_white):
+                        if friend_ray:
+                            break
+                        else:
+                            friend_ray = True
+                    else:
+                        can_diagonal = ((1 << destination) & self.sliding != 0) and (
+                            not self.is_type_of(destination, PieceType.ROOK))
+                        can_vertical = ((1 << destination) & self.sliding != 0) and (
+                            not self.is_type_of(destination, PieceType.BISHOP))
+                        threat = (is_diagonal and can_diagonal) or ((not is_diagonal) and can_vertical)
+                        if threat:
+                            if friend_ray:
+                                self.pin_in_position = True
+                                self.pin_map |= mask
+                            else:
+                                self.check_map |= mask
+                                self.position_in_double_check = self.position_in_check
+                                self.position_in_check = True
+                        break
 
         for cell in enemy_dict[PieceType.KNIGHT]:
             if self.knight_moves[cell] & (1 << king_cell) != 0:
@@ -429,22 +456,10 @@ class Board:
                 return
 
     def is_pinned(self, cell: int, is_white: bool):
-        if cell & self.sliding_attacks == 0:
-            return False, 0
+        if not self.pin_in_position:
+            return False
 
-        king_cell = self.get_pieces_dict(is_white)[PieceType.KING][0]
-        if cell == king_cell:
-            return False, 0
-
-        step = binary_ops_utils.get_direction(cell, king_cell) == 0
-        if step == 0:
-            return False, 0
-
-        for cell_tmp in range(cell, king_cell, step):
-            if not self.is_cell_empty(cell_tmp):
-                return False, 0
-
-        return True, 0
+        return self.pin_map & (1 << cell) != 0
 
     def update_round(self, target_cell, piece: PieceType, enables_en_passant=False):
         self.en_passant_ready = target_cell if enables_en_passant else 0
