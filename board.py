@@ -455,7 +455,7 @@ class Board:
                 self.position_in_check = True
                 return
 
-    def is_pinned(self, cell: int, is_white: bool):
+    def is_pinned(self, cell: int):
         if not self.pin_in_position:
             return False
 

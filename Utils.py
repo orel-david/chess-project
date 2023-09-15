@@ -86,7 +86,7 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
                 return True
         return False
 
-    if not board.is_pinned(cell, is_white):
+    if not board.is_pinned(cell):
         return True
 
     return abs(binary_ops_utils.get_direction(move.cell, king_cell)) == abs(step)
@@ -131,7 +131,6 @@ def can_castle(board: Board, is_white: bool, move: Move):
     direction = 1 if move.is_king_side else -1
 
     row = 1 if is_white else 8
-    path = 0
     path = binary_ops_utils.translate_row_col_to_cell(row, 5 + direction)
     not_threatened = not (is_threatened(board, is_white, path))
 
