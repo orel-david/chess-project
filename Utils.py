@@ -97,7 +97,7 @@ def get_threats(board: Board, is_white: bool, cell: int):
     enemy_pieces = board.get_pieces_dict(not is_white)
     for piece in enemy_pieces:
         for enemy in enemy_pieces[piece]:
-            if is_pseudo_legal(board, Move(enemy, cell)) and board.is_cell_colored(cell, True):
+            if is_pseudo_legal(board, Move(enemy, cell)) and board.is_cell_colored(cell, is_white):
                 threats.append(enemy)
     return threats
 
@@ -146,7 +146,6 @@ def can_castle(board: Board, is_white: bool, move: Move):
     return (option.upper() in board.castling_options) and valid
 
 
-# TODO:CONTINUE FROM HERE
 def castle(board: Board, is_white: bool, move: Move, valid=False):
     if move.castle is False:
         raise NonLegal()

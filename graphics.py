@@ -1,14 +1,14 @@
 import sys
-from typing import Optional, Union, Tuple, Sequence
+from typing import Optional, Sequence
 
 import pygame
 
 import Utils
+import binary_ops_utils
 from Utils import Move
 from board import Board
-from cell import Cell
 from chess_exceptions import NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal
-from pieces.piece import PieceType
+from piece import PieceType
 
 
 def create_image_dict(is_white: bool, width: int, height: int):
@@ -33,19 +33,19 @@ class GUI:
     white_pieces = create_image_dict(True, width, height)
     black_pieces = create_image_dict(False, width, height)
     pieces = {True: white_pieces, False: black_pieces}
-    origin: Optional[Cell]
+    origin: int
     move: Optional[Move]
     white = True
     promotion_case = False
     moves: Optional[Sequence[Move]]
-    threats: Optional[Sequence[Cell]]
+    threats: Sequence[int]
 
     def __init__(self):
         pygame.init()
-        self.origin = None
+        self.origin = -1
         self.move = None
         self.moves = None
-        self.threats = None
+        self.threats = []
         pygame.display.set_caption("Chess game")
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.board_image = pygame.image.load("images/empty-board.png")
@@ -56,7 +56,10 @@ class GUI:
     def is_white(self):
         return self.white
 
-    def draw_at_cell(self, img, row: int, col: int):
+    def draw_at_cell(self, img, cell: int):
+        row, col = binary_ops_utils.translate_cell_to_row_col(cell)
+        row += 1
+        col += 1
         if row > 8 or col > 8 or row < 1 or col < 1:
             return
         self.screen.blit(img, ((col - 1) * (self.width / 8), (8 - row) * (self.height / 8)))
@@ -68,7 +71,7 @@ class GUI:
             pieces_dict = board.get_pieces_dict(color)
             for piece in pieces_dict.keys():
                 for cell in pieces_dict[piece]:
-                    self.draw_at_cell(self.pieces[color][cell.get_cell_type()], cell.get_row(), cell.get_col())
+                    self.draw_at_cell(self.pieces[color][piece], cell)
         pygame.display.update()
 
     def handle_events(self, board: Board):
@@ -86,13 +89,13 @@ class GUI:
                     col = 1 + int((x * 8) / self.width)
                     row = 8 - int((y * 8) / self.height)
 
-                    if self.origin is not None:
-                        cell = board.get_cell(row, col)
+                    if self.origin != -1:
+                        cell = binary_ops_utils.translate_row_col_to_cell(row, col)
 
                         if self.promotion_case:
                             direction = 1 if self.is_white() else -1
                             queen_option = 8 if self.is_white() else 1
-                            if col != self.move.col:
+                            if col != self.move.target % 8:
                                 self.set_origin(board, row, col)
 
                             if row == queen_option:
@@ -107,9 +110,9 @@ class GUI:
                                 self.set_origin(board, row, col)
                                 return
                             self.promotion_case = False
-                            self.make_move(board, (self.origin, self.move))
+                            self.make_move(board, self.move)
                             self.draw_board(board)
-                            self.origin = None
+                            self.origin = 0
                             self.move = None
                             king_cell = board.get_pieces_dict(self.is_white())[PieceType.KING][0]
                             self.threats = Utils.get_threats(board, self.is_white(), king_cell)
@@ -117,21 +120,21 @@ class GUI:
                                 self.mark_check(threat)
                             return
 
-                        if (not cell.is_empty()) and cell.is_white() == self.is_white():
+                        if board.is_cell_colored(cell, self.is_white()):
                             self.set_origin(board, row, col)
                             return
-
-                        if self.origin.get_cell_type() == PieceType.KING:
+                        origin_type = board.get_cell_type(self.origin)
+                        if origin_type == PieceType.KING:
                             castling_moves = self.get_castle_moves(board)
                             for castle in castling_moves:
-                                if castle.row == row and castle.col == col:
+                                if castle.target == row * 8 + col:
                                     self.make_move(board, castle)
                                     self.draw_board(board)
-                                    self.origin = None
+                                    self.origin = 0
                                     self.move = None
                                     return
 
-                        if self.origin.get_cell_type() == PieceType.PAWN:
+                        if origin_type == PieceType.PAWN:
                             promotion_rank = 8 if self.is_white() else 1
                             self.promotion_case = promotion_rank == row
 
@@ -147,15 +150,15 @@ class GUI:
 
     def is_in_moves(self, move: Move):
         for m in self.moves:
-            if m.row == move.row and m.col == move.col:
-                move.is_en_passant = m.is_en_passant
+            if m.target == move.target:
                 return True
         return False
 
     def draw_promotion_selection(self, move: Move):
-        color = move.row == 8
+        color = int(move.target / 8) == 7
         row = 8 if color else 4
-        rectangle = pygame.Rect((move.col - 1) * (self.width / 8), (8 - row) * (self.height / 8),
+        col = move.target % 8
+        rectangle = pygame.Rect(col * (self.width / 8), (8 - row) * (self.height / 8),
                                 self.width / 8 + 5,
                                 self.height / 2)
         pygame.draw.rect(self.screen, (200, 222, 255), rectangle)
@@ -163,26 +166,32 @@ class GUI:
         # draw the pieces
         row = 8 if color else 1
         direction = 1 if color else -1
-        self.draw_at_cell(self.pieces[color][PieceType.QUEEN], row, move.col)
-        self.draw_at_cell(self.pieces[color][PieceType.KNIGHT], row - direction, move.col)
-        self.draw_at_cell(self.pieces[color][PieceType.ROOK], row - direction * 2, move.col)
-        self.draw_at_cell(self.pieces[color][PieceType.BISHOP], row - direction * 3, move.col)
+        self.draw_at_cell(self.pieces[color][PieceType.QUEEN], binary_ops_utils.translate_row_col_to_cell(row, col))
+        self.draw_at_cell(self.pieces[color][PieceType.KNIGHT],
+                          binary_ops_utils.translate_row_col_to_cell(row - direction, col))
+        self.draw_at_cell(self.pieces[color][PieceType.ROOK],
+                          binary_ops_utils.translate_row_col_to_cell(row - 2 * direction, col))
+        self.draw_at_cell(self.pieces[color][PieceType.BISHOP],
+                          binary_ops_utils.translate_row_col_to_cell(row - 3 * direction, col))
 
         pygame.display.update()
 
     def set_origin(self, board: Board, row, col):
         self.promotion_case = False
-        self.origin = board.get_cell(row, col)
+        self.origin = binary_ops_utils.translate_row_col_to_cell(row, col)
         self.draw_board(board)
-        if self.origin.is_white() != self.is_white():
-            self.origin = None
+        if not board.is_cell_colored(self.origin, self.is_white()):
+            self.origin = -1
             return
-        self.moves = Utils.get_all_legal_moves(board, self.origin)
+        origin_type = board.get_cell_type(self.origin)
+        self.moves = Utils.get_all_legal_moves(board, self.origin, origin_type, self.is_white())
         for move in self.moves:
             self.draw_move(board, move)
 
     def perform_move(self, board, row, col, promote=False):
-        self.move = Move(row, col)
+        target = binary_ops_utils.translate_row_col_to_cell(row, col)
+        print("target, {}".format(target))
+        self.move = Move(self.origin, target)
         if not self.is_in_moves(self.move):
             self.move = None
             self.set_origin(board, row, col)
@@ -193,26 +202,31 @@ class GUI:
             self.draw_promotion_selection(self.move)
             return
 
-        self.make_move(board, (self.origin, self.move))
+        self.make_move(board, self.move)
         self.draw_board(board)
-        self.origin = None
+        self.origin = -1
         self.move = None
 
     def draw_move(self, board: Board, move: Move):
-        if move.row > 8 or move.col > 8 or move.row < 1 or move.col < 1:
+        if move.target & 0x40 != 0:
             return
-        rectangle = pygame.Rect((move.col - 1) * (self.width / 8), (8 - move.row) * (self.height / 8),
+        row, col = binary_ops_utils.translate_cell_to_row_col(move.target)
+        row += 1
+        col += 1
+        rectangle = pygame.Rect((col - 1) * (self.width / 8), (8 - row) * (self.height / 8),
                                 self.width / 8,
                                 self.height / 8)
         surface = pygame.Surface((rectangle.width, rectangle.height), pygame.SRCALPHA)
-        cell = board.get_cell(move.row, move.col)
-        color = self.legal_color if cell.get_cell_type() == PieceType.EMPTY else (255, 255, 0)
+        color = self.legal_color if board.is_cell_empty(move.target) else (255, 255, 0)
         surface.fill((color[0], color[1], color[2], self.alpha))
         self.screen.blit(surface, rectangle)
         pygame.display.update()
 
-    def mark_check(self, cell: Cell):
-        rectangle = pygame.Rect((cell.col - 1) * (self.width / 8), (8 - cell.row) * (self.height / 8),
+    def mark_check(self, cell: int):
+        row, col = binary_ops_utils.translate_cell_to_row_col(cell)
+        row += 1
+        col += 1
+        rectangle = pygame.Rect((col - 1) * (self.width / 8), (8 - row) * (self.height / 8),
                                 self.width / 8,
                                 self.height / 8)
         surface = pygame.Surface((rectangle.width, rectangle.height), pygame.SRCALPHA)
@@ -238,16 +252,12 @@ class GUI:
     def get_castle_moves(self, board: Board):
         return Utils.get_castle_moves(board, self.is_white())
 
-    def make_move(self, board: Board, user_input: Union[Move, Tuple[Cell, Move]]):
+    def make_move(self, board: Board, user_input: Move):
         try:
 
-            if type(user_input) is Utils.Move:
-                Utils.castle(board, self.white, user_input)
-                self.white = not self.white
-                return
-
-            Utils.make_move(board, user_input[0], user_input[1], True)
+            Utils.make_move(board, user_input)
             self.white = not self.white
+            
         except NonLegal:
             print("Illegal move, try again")
         except KingSacrifice:
