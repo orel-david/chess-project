@@ -75,6 +75,8 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
     step = binary_ops_utils.get_direction(move.target, king_cell)
 
     if board.position_in_check:
+        if piece == PieceType.KING:
+            return True
         if (1 << move.target) & board.check_map != 0:
             return True
 
@@ -84,6 +86,7 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
                     if not board.is_cell_empty(cell_tmp):
                         return False
                 return True
+
         return False
 
     if not board.is_pinned(cell):
@@ -92,14 +95,8 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
     return abs(binary_ops_utils.get_direction(move.cell, king_cell)) == abs(step)
 
 
-def get_threats(board: Board, is_white: bool, cell: int):
-    threats = []
-    enemy_pieces = board.get_pieces_dict(not is_white)
-    for piece in enemy_pieces:
-        for enemy in enemy_pieces[piece]:
-            if is_pseudo_legal(board, Move(enemy, cell)) and board.is_cell_colored(cell, is_white):
-                threats.append(enemy)
-    return threats
+def get_threats(board: Board):
+    return board.threats
 
 
 def is_under_check(board: Board):
@@ -192,6 +189,7 @@ def make_move(board: Board, move: Move, valid=True):
 
     if move.promotion != PieceType.EMPTY and piece == PieceType.PAWN:
         promote(board, move)
+        piece = move.promotion
 
     if not valid:
         if not condition(board, move, piece, board.is_white):

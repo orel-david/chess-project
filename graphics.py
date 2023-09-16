@@ -112,10 +112,9 @@ class GUI:
                             self.promotion_case = False
                             self.make_move(board, self.move)
                             self.draw_board(board)
-                            self.origin = 0
+                            self.origin = -1
                             self.move = None
-                            king_cell = board.get_pieces_dict(self.is_white())[PieceType.KING][0]
-                            self.threats = Utils.get_threats(board, self.is_white(), king_cell)
+                            self.threats = Utils.get_threats(board)
                             for threat in self.threats:
                                 self.mark_check(threat)
                             return
@@ -139,8 +138,7 @@ class GUI:
                             self.promotion_case = promotion_rank == row
 
                         self.perform_move(board, row, col, self.promotion_case)
-                        king_cell = board.get_pieces_dict(self.is_white())[PieceType.KING][0]
-                        self.threats = Utils.get_threats(board, self.is_white(), king_cell)
+                        self.threats = Utils.get_threats(board)
                         for threat in self.threats:
                             self.mark_check(threat)
                         return

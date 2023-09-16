@@ -324,21 +324,21 @@ class Board:
                     break
         return result
 
-    def get_moves_by_cell(self, cell: int, is_white: bool):
+    def get_moves_by_cell(self, cell: int, is_white: bool, for_attacks=False):
         piece = self.get_cell_type(cell)
         if self.is_cell_empty(cell):
             return
         if piece == PieceType.PAWN:
-            return self.get_pawn_moves(cell, is_white)
+            return self.get_pawn_captures(cell, is_white) if for_attacks else self.get_pawn_moves(cell, is_white)
         elif piece == PieceType.KING:
             return self.get_king_cell_moves(cell, is_white)
         elif piece == PieceType.KNIGHT:
             return self.get_knight_cell_moves(cell, is_white)
         return self.get_vertical_cell_moves(cell, piece, is_white)
 
-    def get_moves_by_piece_(self, cell: int, is_white: bool, piece: PieceType):
+    def get_moves_by_piece_(self, cell: int, is_white: bool, piece: PieceType, for_attacks=False):
         if piece == PieceType.PAWN:
-            return self.get_pawn_moves(cell, is_white)
+            return self.get_pawn_captures(cell, is_white) if for_attacks else self.get_pawn_moves(cell, is_white)
         elif piece == PieceType.KING:
             return self.get_king_cell_moves(cell, is_white)
         elif piece == PieceType.KNIGHT:
@@ -356,11 +356,11 @@ class Board:
             for piece in piece_dict.keys():
                 self.attackers_maps[piece][index] = 0
                 for cell in piece_dict[piece]:
-                    self.attackers_maps[piece][index] |= self.get_moves_by_piece_(cell, is_white, piece)
+                    self.attackers_maps[piece][index] |= self.get_moves_by_piece_(cell, is_white, piece, True)
         else:
             self.attackers_maps[piece][index] = 0
             for cell in piece_dict[piece]:
-                self.attackers_maps[piece][index] |= self.get_moves_by_piece_(cell, is_white, piece)
+                self.attackers_maps[piece][index] |= self.get_moves_by_piece_(cell, is_white, piece, True)
             if self.attackers_maps[PieceType.QUEEN][index] & new_cell != 0:
                 self.attackers_maps[PieceType.QUEEN][index] = 0
                 for cell in piece_dict[PieceType.QUEEN]:
@@ -395,6 +395,7 @@ class Board:
         self.pin_map = 0
         self.position_in_check = False
         self.check_map = 0
+        self.threats = []
         start = 0
         end = 8
         if len(enemy_dict[PieceType.QUEEN]) == 0:
@@ -430,6 +431,7 @@ class Board:
                                 self.check_map |= mask
                                 self.position_in_double_check = self.position_in_check
                                 self.position_in_check = True
+                                self.threats.append(destination)
                         break
 
         for cell in enemy_dict[PieceType.KNIGHT]:
@@ -437,6 +439,7 @@ class Board:
                 self.check_map = binary_ops_utils.switch_cell_bit(self.check_map, cell, True)
                 self.position_in_double_check = self.position_in_check
                 self.position_in_check = True
+                self.threats.append(cell)
                 return
 
         king_row = int(king_cell / 8)
@@ -453,6 +456,7 @@ class Board:
                 self.check_map = binary_ops_utils.switch_cell_bit(self.check_map, cell, True)
                 self.position_in_double_check = self.position_in_check
                 self.position_in_check = True
+                self.threats.append(cell)
                 return
 
     def is_pinned(self, cell: int):
