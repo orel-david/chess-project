@@ -166,7 +166,6 @@ def castle(board: Board, is_white: bool, move: Move, valid=False):
         board.castling_options = ''.join([c for c in board.castling_options if c.isupper()])
     board.set_cell_piece(move.target, PieceType.KING, is_white)
     board.set_cell_piece(move.target + side, PieceType.ROOK, is_white)
-    board.__update_attacker__(is_white, PieceType.ROOK, move.target + side)
     board.update_round(move.target, PieceType.KING, False)
 
 
@@ -201,7 +200,6 @@ def make_move(board: Board, move: Move, valid=True):
     if target_type != PieceType.EMPTY:
         board.count = 0
         board.remove_cell_piece(move.target, target_type, not board.is_white)
-        board.__update_attacker__(not board.is_white, target_type, move.target)
 
     if piece == PieceType.PAWN:
         board.count = 0
@@ -214,7 +212,6 @@ def make_move(board: Board, move: Move, valid=True):
         if target_type == PieceType.EMPTY and (abs(move.cell - move.target) % 8 != 0):
             side = 1 if (move.cell % 8) < (move.target % 8) else -1
             board.remove_cell_piece(move.cell + side, PieceType.PAWN, not board.is_white)
-            board.__update_attacker__(not board.is_white, PieceType.PAWN, move.target)
 
     elif piece == PieceType.KING:
         if board.is_white:
@@ -239,7 +236,6 @@ def make_move(board: Board, move: Move, valid=True):
     board.remove_cell_piece(move.cell, piece, board.is_white)
     board.set_cell_piece(move.target, piece, board.is_white)
     board.update_round(move.target, piece, enable_en_passant)
-    print(board.castling_options)
 
 
 def get_castle_moves(board: Board, is_white: bool):

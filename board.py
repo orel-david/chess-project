@@ -305,7 +305,7 @@ class Board:
                 self.vertical_distances.append((east, west, north, south,
                                                 min(north, west), min(south, east), min(north, east), min(south, west)))
 
-    def get_vertical_cell_moves(self, cell: int, piece: PieceType, is_white: bool):
+    def get_vertical_cell_moves(self, cell: int, piece: PieceType, is_white: bool, for_attacks=False):
         # TODO: Optimize to use logical operations and masks if necessary
         start = 4 if piece == PieceType.BISHOP else 0
         end = 4 if piece == PieceType.ROOK else 8
@@ -316,6 +316,8 @@ class Board:
                 target = direction * (j + 1) + cell
 
                 if self.is_cell_colored(target, is_white):
+                    if for_attacks:
+                        result = binary_ops_utils.switch_cell_bit(result, target, True)
                     break
 
                 result = binary_ops_utils.switch_cell_bit(result, target, True)
@@ -334,7 +336,7 @@ class Board:
             return self.get_king_cell_moves(cell, is_white)
         elif piece == PieceType.KNIGHT:
             return self.get_knight_cell_moves(cell, is_white)
-        return self.get_vertical_cell_moves(cell, piece, is_white)
+        return self.get_vertical_cell_moves(cell, piece, is_white, for_attacks)
 
     def get_moves_by_piece_(self, cell: int, is_white: bool, piece: PieceType, for_attacks=False):
         if piece == PieceType.PAWN:
@@ -343,7 +345,7 @@ class Board:
             return self.get_king_cell_moves(cell, is_white)
         elif piece == PieceType.KNIGHT:
             return self.get_knight_cell_moves(cell, is_white)
-        return self.get_vertical_cell_moves(cell, piece, is_white)
+        return self.get_vertical_cell_moves(cell, piece, is_white, for_attacks)
 
     def get_distances(self):
         return self.vertical_distances
@@ -469,7 +471,8 @@ class Board:
         self.en_passant_ready = target_cell if enables_en_passant else 0
         self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
             PieceType.ROOK]
-        self.__update_attacker__(self.is_white, piece, target_cell)
+        self.__update_attacker__(True)
+        self.__update_attacker__(False)
         self.is_white = not self.is_white
         self.__update_pins_and_checks__(self.is_white)
         self.count += 1
