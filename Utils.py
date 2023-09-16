@@ -76,7 +76,7 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
 
     if board.position_in_check:
         if piece == PieceType.KING:
-            return True
+            return board.get_attacks(is_white) & (1 << move.target) == 0
         if (1 << move.target) & board.check_map != 0:
             return True
 
@@ -107,7 +107,7 @@ def is_mate(board: Board, is_white: bool):
     pieces_dict = board.get_pieces_dict(is_white)
     king_cell = pieces_dict[PieceType.KING][0]
     if board.position_in_check:
-        if (~board.get_attacks(is_white)) & board.get_king_cell_moves(king_cell, is_white) == 0:
+        if not get_all_legal_moves(board, king_cell, PieceType.KING, is_white):
             if board.position_in_double_check:
                 return True
             for piece in pieces_dict.keys():
