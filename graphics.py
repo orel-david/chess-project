@@ -126,10 +126,10 @@ class GUI:
                         if origin_type == PieceType.KING:
                             castling_moves = self.get_castle_moves(board)
                             for castle in castling_moves:
-                                if castle.target == row * 8 + col:
+                                if castle.target == binary_ops_utils.translate_row_col_to_cell(row, col):
                                     self.make_move(board, castle)
                                     self.draw_board(board)
-                                    self.origin = 0
+                                    self.origin = -1
                                     self.move = None
                                     return
 
