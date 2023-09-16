@@ -72,6 +72,9 @@ class GUI:
             for piece in pieces_dict.keys():
                 for cell in pieces_dict[piece]:
                     self.draw_at_cell(self.pieces[color][piece], cell)
+        self.threats = Utils.get_threats(board)
+        for threat in self.threats:
+            self.mark_check(threat)
         pygame.display.update()
 
     def handle_events(self, board: Board):
@@ -138,9 +141,6 @@ class GUI:
                             self.promotion_case = promotion_rank == row
 
                         self.perform_move(board, row, col, self.promotion_case)
-                        self.threats = Utils.get_threats(board)
-                        for threat in self.threats:
-                            self.mark_check(threat)
                         return
 
                     print("white" if self.is_white() else "black")
