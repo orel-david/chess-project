@@ -35,17 +35,20 @@ def get_turned_bits(word: int):
 
 
 def get_direction(cell: int, target: int):
-    diff = target - cell
-    if diff % 8 == 0:
-        return 8 if diff > 0 else -8
+    target_row, target_col = translate_cell_to_row_col(target)
+    cell_row, cell_col = translate_cell_to_row_col(cell)
+    row_diff = target_row - cell_row
+    col_diff = target_col - cell_col
+    if col_diff == 0:
+        return 8 if row_diff > 0 else -8
 
-    if diff % 9 == 0:
-        return 9 if diff > 0 else -9
+    if row_diff == 0:
+        return 1 if col_diff > 8 else -1
 
-    if diff % 7 == 0:
-        return 7 if diff > 0 else -7
+    if row_diff == col_diff:
+        return 9 if row_diff > 0 else -9
 
-    if abs(diff) < 8:
-        return 1 if diff > 0 else -1
+    if row_diff == -col_diff:
+        return -7 if row_diff < 0 else 7
 
     return 0

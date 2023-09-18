@@ -21,7 +21,6 @@ class Board:
     sliding_attacks = 0
     attackers = [0, 0]
     pin_in_position = False
-    # change main key to be index
     attackers_maps = {PieceType.PAWN: [0, 0], PieceType.QUEEN: [0, 0], PieceType.BISHOP: [0, 0],
                       PieceType.KNIGHT: [0, 0],
                       PieceType.KING: [0, 0], PieceType.ROOK: [0, 0]}
@@ -395,7 +394,9 @@ class Board:
         king_cell = pieces_dict[PieceType.KING][0]
         index = 1 if is_white else 0
         self.pin_map = 0
+        self.pin_in_position = False
         self.position_in_check = False
+        self.position_in_double_check_check = False
         self.check_map = 0
         self.threats = []
         start = 0
@@ -447,14 +448,13 @@ class Board:
         king_row = int(king_cell / 8)
         # we check the enemies pawns
         pawn_advancement = -1 if is_white else 1
-        start_row = 6 if is_white else 1
         if (1 << king_cell) & self.attackers_maps[PieceType.PAWN][index] == 0:
             return
         for cell in enemy_dict[PieceType.PAWN]:
             pawn_row = int(cell / 8)
-            if pawn_row + pawn_advancement != king_row and (pawn_row != start_row):
+            if pawn_row + pawn_advancement != king_row:
                 continue
-            if self.get_pawn_captures(cell, is_white) & (1 << king_cell) != 0:
+            if self.get_pawn_captures(cell, not is_white) & (1 << king_cell) != 0:
                 self.check_map = binary_ops_utils.switch_cell_bit(self.check_map, cell, True)
                 self.position_in_double_check = self.position_in_check
                 self.position_in_check = True
@@ -475,4 +475,7 @@ class Board:
         self.__update_attacker__(False)
         self.is_white = not self.is_white
         self.__update_pins_and_checks__(self.is_white)
+
+        if piece == piece.PAWN:
+            self.board = 0
         self.count += 1

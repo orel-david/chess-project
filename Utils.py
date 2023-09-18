@@ -91,7 +91,6 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
 
     if not board.is_pinned(cell):
         return True
-
     return abs(binary_ops_utils.get_direction(move.cell, king_cell)) == abs(step)
 
 
@@ -202,7 +201,6 @@ def make_move(board: Board, move: Move, valid=True):
         board.remove_cell_piece(move.target, target_type, not board.is_white)
 
     if piece == PieceType.PAWN:
-        board.count = 0
         diff = abs(move.cell - move.target)
         # If move 2 rows it can be subject to en passant
         if diff == 16:
