@@ -596,7 +596,7 @@ class Board:
         :param piece: The piece that were moved
         :param enables_en_passant: Flag that says whether it allows en-passant on the next move
         """
-        
+
         self.en_passant_ready = target_cell if enables_en_passant else 0
         self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
             PieceType.ROOK]
