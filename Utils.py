@@ -5,6 +5,9 @@ from piece import PieceType
 
 
 class Move:
+    """
+    This class represent a move in the game with origin, target, castling and promotion data
+    """
     # cell and target are cell index
     cell: int
     target: int
@@ -13,6 +16,12 @@ class Move:
     promotion: PieceType
 
     def __init__(self, cell, tar):
+        """ Initialize to a standard move
+
+        :param cell: The origin cell index
+        :param tar: The target cel index
+        """
+
         self.cell = cell
         self.target = tar
         self.castle = False
@@ -20,24 +29,53 @@ class Move:
         self.is_en_passant = False
         self.promotion = PieceType.EMPTY
 
-    def set_castle(self, is_right):
+    def set_castle(self, is_king_side):
+        """ This defines the move to be a castling move
+
+        :param is_king_side: Whether to castling is to the king side
+        """
         self.castle = True
-        self.is_king_side = is_right
+        self.is_king_side = is_king_side
 
     def set_promotion(self, piece):
+        """ Define the move as a promotion move and set the target piece
+
+        :param piece: The piece which it will promote to
+        """
         self.promotion = piece
 
 
 def is_pseudo_legal(board: Board, move: Move):
+    """ Return whether a move is pseudo legal on a board
+
+    :param board: The board on which we check
+    :param move: The move we validate
+    :return: Whether the move is pseudo legal or not
+    """
     moves = board.get_moves_by_cell(move.cell, board.is_white)
     return moves & binary_ops_utils.switch_cell_bit(0, move.target, True) != 0
 
 
 def is_threatened(board: Board, is_white: bool, cell: int):
+    """ Returns if a cell is threatened
+
+    :param board: The board on which we check
+    :param is_white: If it the white player
+    :param cell: The cell we check
+    :return: If the cell is in the attacked cells of the opponent
+    """
     return binary_ops_utils.switch_cell_bit(0, cell, True) & board.get_attacks(is_white) != 0
 
 
 def get_all_legal_moves(board: Board, cell: int, piece: PieceType, is_white: bool):
+    """ Returns all the legal move from a certain cell with a certain PieceType
+
+    :param board: The board we use
+    :param cell: The cell we check
+    :param piece: The piece type of the cell
+    :param is_white: Whether it is the turn of the white player or not
+    :return: All legal moves in the board position as a list of moves
+    """
     if board.is_cell_empty(cell) or board.is_cell_colored(cell, not is_white):
         return []
 
@@ -61,6 +99,15 @@ def get_all_legal_moves(board: Board, cell: int, piece: PieceType, is_white: boo
 
 
 def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
+    """ Returns if a move on the board for a certain piece is legal/
+
+    :param board: The board we check
+    :param move: The move we validate
+    :param piece: The move's origin cell PieceType
+    :param is_white: Whether it is a move of the white player
+    :return: If the move is legal
+    """
+
     if piece == PieceType.EMPTY:
         return False
 
@@ -75,34 +122,49 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
     step = binary_ops_utils.get_direction(move.target, king_cell)
 
     if board.position_in_check:
+        # The king escapes to safety
         if piece == PieceType.KING:
             return board.get_attacks(is_white) & (1 << move.target) == 0
-        if (1 << move.target) & board.check_map != 0:
-            return True
 
-        if board.pin_map != 0:
-            if abs(board.pin_map) == abs(step):
-                for cell_tmp in range(cell, king_cell, step):
-                    if not board.is_cell_empty(cell_tmp):
-                        return False
-                return True
+        # The move blocks the attack and isn't pinned
+        if (1 << move.target) & board.check_map != 0 and (not board.is_pinned(cell)):
+            return True
 
         return False
 
     if not board.is_pinned(cell):
         return True
+
+    # Check if pinned piece stays on it's ray
     return abs(binary_ops_utils.get_direction(move.cell, king_cell)) == abs(step)
 
 
 def get_threats(board: Board):
+    """ Returns all the threats to the current player's king
+
+    :param board: The board of the position
+    :return: List of the cell indexes of pieces which threatens the king
+    """
+
     return board.threats
 
 
 def is_under_check(board: Board):
+    """ Return if there is a check
+
+    :param board: The board of the position
+    :return: True if the current player is under check
+    """
     return board.position_in_check
 
 
 def is_mate(board: Board, is_white: bool):
+    """ Return if the current player is under mate.
+
+    :param board: The board of the position
+    :param is_white: Is the current player the white player
+    :return: True if it is a mate for the opponent
+    """
     pieces_dict = board.get_pieces_dict(is_white)
     king_cell = pieces_dict[PieceType.KING][0]
     if board.position_in_check:
@@ -118,6 +180,14 @@ def is_mate(board: Board, is_white: bool):
 
 
 def can_castle(board: Board, is_white: bool, move: Move):
+    """ This method validates a castling move on a certain board
+
+    :param board: The board on which we validate the move
+    :param is_white: Whether the current player is white
+    :param move: The move which is validated
+    :return: True if the move is a legal castling move
+    """
+
     if move.castle is False:
         return False
     if is_under_check(board):
@@ -142,6 +212,14 @@ def can_castle(board: Board, is_white: bool, move: Move):
 
 
 def castle(board: Board, is_white: bool, move: Move, valid=False):
+    """ This method perform a castling move on a board
+
+    :param board: The board being used
+    :param is_white: The color of the player
+    :param move: The castling move
+    :param valid: Flag that says if the move was validated beforehand
+    """
+
     if move.castle is False:
         raise NonLegal()
     if (not valid) and is_under_check(board):
@@ -169,6 +247,11 @@ def castle(board: Board, is_white: bool, move: Move, valid=False):
 
 
 def promote(board: Board, move: Move):
+    """ Perform the promotion of the piece by switching the PieceType of the cell
+
+    :param board: The board being used
+    :param move: The promotion move
+    """
     if move.promotion == PieceType.EMPTY:
         raise NonLegal()
 
@@ -181,6 +264,13 @@ def promote(board: Board, move: Move):
 
 
 def make_move(board: Board, move: Move, valid=True):
+    """ Perform a move on the board and updates the required fields
+
+    :param board: The board
+    :param move: The move being performed
+    :param valid: Flag that determine whether the move was validated
+    """
+
     piece = board.get_cell_type(move.cell)
     enable_en_passant = False
     if move.castle:
@@ -195,6 +285,7 @@ def make_move(board: Board, move: Move, valid=True):
         if not condition(board, move, piece, board.is_white):
             raise NonLegal()
 
+    # Update the target cell piece if exist
     target_type = board.get_cell_type(move.target)
     if target_type != PieceType.EMPTY:
         board.count = 0
@@ -211,6 +302,7 @@ def make_move(board: Board, move: Move, valid=True):
             side = 1 if (move.cell % 8) < (move.target % 8) else -1
             board.remove_cell_piece(move.cell + side, PieceType.PAWN, not board.is_white)
 
+    # Update castling information
     elif piece == PieceType.KING:
         if board.is_white:
             board.castling_options = ''.join([c for c in board.castling_options if c.islower()])
@@ -231,12 +323,20 @@ def make_move(board: Board, move: Move, valid=True):
                     board.castling_options = ''.join([c for c in board.castling_options if c != 'q'])
                 elif rook_col == 7:
                     board.castling_options = ''.join([c for c in board.castling_options if c != 'k'])
+
+    # Move the origin piece to the target and update the board
     board.remove_cell_piece(move.cell, piece, board.is_white)
     board.set_cell_piece(move.target, piece, board.is_white)
     board.update_round(move.target, piece, enable_en_passant)
 
 
 def get_castle_moves(board: Board, is_white: bool):
+    """ This method generate all possible castling moves for a player from certain position
+
+    :param board: The position we use
+    :param is_white: If the player is white
+    :return: A list of possible castling moves
+    """
     moves = []
     row = 1 if is_white else 8
     king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
@@ -252,6 +352,11 @@ def get_castle_moves(board: Board, is_white: bool):
 
 
 def get_promotion_moves(move: Move):
+    """ Returns a list of all legal promotion cases of a promotion move
+
+    :param move: The promotion move
+    :return: A list of all the possible promotions corresponding to the move
+    """
     result = []
     relevant_pieces = [PieceType.QUEEN, PieceType.ROOK, PieceType.KNIGHT, PieceType.BISHOP]
     for piece in relevant_pieces:
@@ -262,6 +367,11 @@ def get_promotion_moves(move: Move):
 
 
 def check_stalemate(board: Board):
+    """ This method returns if the board is in stalemate case, note: I haven't considered all the stalemate rules
+
+    :param board: The position we check
+    :return: If the position is in stalemate
+    """
     if board.count >= 50:
         return True
 
