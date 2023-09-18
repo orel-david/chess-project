@@ -7,7 +7,7 @@ def switch_bit(source: int, row: int, col: int, on: bool):
     :param on: The boolean that says whether to turn the bit on or off
     :return: The modified int
     """
-    
+
     if on:
         return source | (1 << (row * 8 + col))
     return source & (~(1 << (row * 8 + col)))
