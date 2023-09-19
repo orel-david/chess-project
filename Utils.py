@@ -1,458 +1,377 @@
-import copy
-
-import pieces.rook
+import binary_ops_utils
 from board import Board
-from cell import Cell
-from chess_exceptions import NonLegal, KingUnderCheck, KingNonLegal, KingSacrifice
-from pieces.piece import PieceType, Piece
-import pieces
+from chess_exceptions import NonLegal, KingUnderCheck
+from piece import PieceType
 
 
 class Move:
-    row: int
-    col: int
+    """
+    This class represent a move in the game with origin, target, castling and promotion data
+    """
+    # cell and target are cell index
+    cell: int
+    target: int
     castle: bool
     is_king_side: bool
-    is_en_passant: bool
     promotion: PieceType
 
-    def __init__(self, row, col):
-        self.row = row
-        self.col = col
+    def __init__(self, cell, tar):
+        """ Initialize to a standard move
+
+        :param cell: The origin cell index
+        :param tar: The target cel index
+        """
+
+        self.cell = cell
+        self.target = tar
         self.castle = False
         self.is_king_side = False
         self.is_en_passant = False
         self.promotion = PieceType.EMPTY
 
-    def set_castle(self, is_right):
+    def set_castle(self, is_king_side):
+        """ This defines the move to be a castling move
+
+        :param is_king_side: Whether to castling is to the king side
+        """
         self.castle = True
-        self.is_king_side = is_right
+        self.is_king_side = is_king_side
 
     def set_promotion(self, piece):
+        """ Define the move as a promotion move and set the target piece
+
+        :param piece: The piece which it will promote to
+        """
         self.promotion = piece
 
 
-def en_passant_check(board: Board, pawn, row: int, col: int):
-    cell = board.get_cell(row, col)
-    if cell is None:
-        return False
+def is_pseudo_legal(board: Board, move: Move):
+    """ Return whether a move is pseudo legal on a board
 
-    if cell.is_empty():
-        return False
-    if (cell.is_white() ^ pawn.is_white()) and (
-            cell.get_cell_type() == PieceType.PAWN):
-        return True if cell.get_cell_piece().en_passant else False
-
-
-def validate_move(board: Board, cell, move):
-    if board.get_cell(move.row, move.col) is None:
-        return False
-    eat = (board.get_cell(move.row, move.col).is_white() ^ cell.is_white())
-    free = board.get_cell(move.row, move.col).is_empty()
-    return free or eat
+    :param board: The board on which we check
+    :param move: The move we validate
+    :return: Whether the move is pseudo legal or not
+    """
+    moves = board.get_moves_by_cell(move.cell, board.is_white)
+    return moves & binary_ops_utils.switch_cell_bit(0, move.target, True) != 0
 
 
-def get_line_moves(board: Board, cell: Cell, directions):
+def is_threatened(board: Board, is_white: bool, cell: int):
+    """ Returns if a cell is threatened
+
+    :param board: The board on which we check
+    :param is_white: If it the white player
+    :param cell: The cell we check
+    :return: If the cell is in the attacked cells of the opponent
+    """
+    return binary_ops_utils.switch_cell_bit(0, cell, True) & board.get_attacks(is_white) != 0
+
+
+def get_all_legal_moves(board: Board, cell: int, piece: PieceType, is_white: bool):
+    """ Returns all the legal move from a certain cell with a certain PieceType
+
+    :param board: The board we use
+    :param cell: The cell we check
+    :param piece: The piece type of the cell
+    :param is_white: Whether it is the turn of the white player or not
+    :return: All legal moves in the board position as a list of moves
+    """
+    if board.is_cell_empty(cell) or board.is_cell_colored(cell, not is_white):
+        return []
+
     moves = []
-    cell_row = cell.get_row()
-    cell_col = cell.get_col()
-    for direction in directions:
-        i = 1
-        temp = Move(cell_row + direction[0], cell_col + direction[1])
-        while validate_move(board, cell, temp):
-            moves.append(temp)
-            i += 1
-            if board.get_cell(temp.row, temp.col).get_cell_type() != PieceType.EMPTY:
-                break
-            temp = Move(cell_row + direction[0] * i, cell_col + direction[1] * i)
+    targets = binary_ops_utils.get_turned_bits(board.get_moves_by_cell(cell, is_white))
+
+    for target in targets:
+        move = Move(cell, target)
+        if condition(board, move, piece, is_white):
+            if piece == PieceType.PAWN:
+                promotion_rank = 7 if board.is_white else 0
+                if int(target / 8) == promotion_rank:
+                    moves += get_promotion_moves(move)
+                    continue
+            moves.append(move)
+
+    if piece == PieceType.KING:
+        moves += get_castle_moves(board, board.is_cell_colored(cell, True))
+
     return moves
 
 
-def get_pawn_moves(board: Board, cell: Cell):
-    if cell.get_cell_type() != PieceType.PAWN:
-        return []
-    pawn_advancement = 1 if cell.is_white() else -1
-    promotion_rank = 8 if cell.is_white() else 1
-    if promotion_rank == cell.get_row():
-        return []
-    cell_row = cell.get_row()
-    cell_col = cell.get_col()
-    moves = []
-    if board.get_cell(cell_row + pawn_advancement, cell_col).is_empty():
-        moves.append(Move(cell_row + pawn_advancement, cell_col))
-        if cell.cell_piece.start and board.get_cell(cell_row + 2 * pawn_advancement, cell_col).is_empty():
-            moves.append(Move(cell_row + 2 * pawn_advancement, cell_col))
+def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
+    """ Returns if a move on the board for a certain piece is legal/
 
-    moves += filter(lambda move: (not (board.get_cell(move.row, move.col) is None)) and (
-            board.get_cell(move.row, move.col).is_white() ^ cell.is_white() and (
-        not board.get_cell(move.row, move.col).is_empty())),
-                    [Move(cell_row + pawn_advancement, cell_col + 1),
-                     Move(cell_row + pawn_advancement, cell_col - 1)])
+    :param board: The board we check
+    :param move: The move we validate
+    :param piece: The move's origin cell PieceType
+    :param is_white: Whether it is a move of the white player
+    :return: If the move is legal
+    """
 
-    en_passant_moves = [Move(cell_row + pawn_advancement, cell_col + 1),
-                        Move(cell_row + pawn_advancement, cell_col - 1)]
+    if piece == PieceType.EMPTY:
+        return False
 
-    for m in en_passant_moves:
-        m.is_en_passant = True
+    if board.position_in_double_check and piece != PieceType.KING:
+        return False
 
-    moves += filter(lambda move: en_passant_check(board, cell.cell_piece, move.row - pawn_advancement, move.col),
-                    en_passant_moves)
+    if piece == PieceType.KING and (board.get_attacks(is_white) & (1 << move.target) != 0):
+        return False
 
-    return list(moves)
+    cell = move.cell
+    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
+    step = binary_ops_utils.get_direction(move.target, king_cell)
 
+    if board.position_in_check:
+        # The king escapes to safety
+        if piece == PieceType.KING:
+            return board.get_attacks(is_white) & (1 << move.target) == 0
 
-def get_knight_moves(board: Board, cell: Cell):
-    if cell.get_cell_type() != PieceType.KNIGHT:
-        return []
-    cell_row = cell.get_row()
-    cell_col = cell.get_col()
-    moves = list(map(lambda m: Move(cell_row + m[0], cell_col + m[1]), cell.get_cell_piece().get_moves()))
-    moves = filter(lambda move: validate_move(board, cell, move), moves)
-    return list(moves)
+        # The move blocks the attack and isn't pinned
+        if (1 << move.target) & board.check_map != 0 and (not board.is_pinned(cell)):
+            return True
+
+        return False
+
+    if not board.is_pinned(cell):
+        return True
+
+    # Check if pinned piece stays on it's ray
+    return abs(binary_ops_utils.get_direction(move.cell, king_cell)) == abs(step)
 
 
-def get_king_moves(board: Board, cell: Cell):
-    if cell.get_cell_type() != PieceType.KING:
-        return []
-    cell_row = cell.get_row()
-    cell_col = cell.get_col()
-    moves = list(map(lambda m: Move(cell_row + m[0], cell_col + m[1]), cell.get_cell_piece().get_moves()))
-    moves = filter(lambda move: validate_move(board, cell, move), moves)
-    # Castling would be handled differently
-    return list(moves)
+def get_threats(board: Board):
+    """ Returns all the threats to the current player's king
+
+    :param board: The board of the position
+    :return: List of the cell indexes of pieces which threatens the king
+    """
+
+    return board.threats
 
 
-def get_rook_moves(board: Board, cell: Cell):
-    if cell.get_cell_type() != PieceType.ROOK:
-        return []
-    return get_line_moves(board, cell, cell.get_cell_piece().get_moves())
+def is_under_check(board: Board):
+    """ Return if there is a check
+
+    :param board: The board of the position
+    :return: True if the current player is under check
+    """
+    return board.position_in_check
 
 
-def get_queen_moves(board: Board, cell: Cell):
-    if cell.get_cell_type() != PieceType.QUEEN:
-        return []
-    return get_line_moves(board, cell, cell.get_cell_piece().get_moves())
+def is_mate(board: Board, is_white: bool):
+    """ Return if the current player is under mate.
 
-
-def get_bishop_moves(board: Board, cell: Cell):
-    if cell.get_cell_type() != PieceType.BISHOP:
-        return []
-    return get_line_moves(board, cell, cell.get_cell_piece().get_moves())
-
-
-moves_dict = {
-    PieceType.PAWN: get_pawn_moves,
-    PieceType.KNIGHT: get_knight_moves,
-    PieceType.KING: get_king_moves,
-    PieceType.ROOK: get_rook_moves,
-    PieceType.QUEEN: get_queen_moves,
-    PieceType.BISHOP: get_bishop_moves,
-    PieceType.EMPTY: lambda b, c: []
-}
-
-
-def get_all_normal_moves(board: Board, cell: Cell):
-    # And en passant moves
-    piece_type = cell.get_cell_type()
-    return moves_dict[piece_type](board, cell)
-
-
-def is_legal(board: Board, cell: Cell, move: Move):
-    moves = get_all_normal_moves(board, cell)
-    for m in moves:
-        if m.row == move.row and move.col == m.col:
-            move.is_en_passant = m.is_en_passant
+    :param board: The board of the position
+    :param is_white: Is the current player the white player
+    :return: True if it is a mate for the opponent
+    """
+    pieces_dict = board.get_pieces_dict(is_white)
+    king_cell = pieces_dict[PieceType.KING][0]
+    if board.position_in_check:
+        if not get_all_legal_moves(board, king_cell, PieceType.KING, is_white):
+            if board.position_in_double_check:
+                return True
+            for piece in pieces_dict.keys():
+                for cell in pieces_dict[piece]:
+                    if get_all_legal_moves(board, cell, piece, is_white):
+                        return False
             return True
     return False
 
 
-def is_threatened(board: Board, is_white: bool, cell: Cell):
-    enemy_pieces = board.get_pieces_dict(not is_white)
-    for piece in enemy_pieces:
-        for enemy in enemy_pieces[piece]:
-            if piece == PieceType.PAWN and enemy.get_col() == cell.get_col():
-                continue
-            if is_legal(board, enemy, Move(cell.get_row(), cell.get_col())) and cell.is_white() == is_white:
-                return True
-    return False
-
-
-def get_all_legal_moves(board: Board, cell: Cell):
-    moves = get_all_normal_moves(board, cell)
-    if cell.get_cell_type() == PieceType.KING:
-        moves += get_castle_moves(board, cell.is_white())
-    moves = [m for m in moves if condition(board, cell, m)]
-    return moves
-
-
-def get_threats(board: Board, is_white: bool, cell: Cell):
-    threats = []
-    enemy_pieces = board.get_pieces_dict(not is_white)
-    for piece in enemy_pieces:
-        for enemy in enemy_pieces[piece]:
-            if is_legal(board, enemy, Move(cell.get_row(), cell.get_col())) and cell.is_white() == is_white:
-                threats.append(enemy)
-    return threats
-
-
-def is_under_check(board: Board, is_white: bool):
-    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
-    return is_threatened(board, is_white, king_cell)
-
-
-def is_mate(board: Board, is_white: bool):
-    if not is_under_check(board, is_white):
-        return False
-    piece_dict = board.get_pieces_dict(is_white)
-    enemy_dict = board.get_pieces_dict(not is_white)
-    king_cell = piece_dict[PieceType.KING][0]
-    # Add case for defending piece
-    for piece in piece_dict.keys():
-        for cell in piece_dict[piece]:
-            block_moves = get_all_normal_moves(board, cell)
-            for move in block_moves:
-                curr_cell = board.get_cell(move.row, move.col)
-                prev_piece = curr_cell.get_cell_piece()
-                curr_cell.cell_piece = cell.cell_piece
-                cell.cell_piece = Piece(False)
-                if curr_cell.get_cell_type() == PieceType.KING:
-                    piece_dict[PieceType.KING] = [curr_cell]
-                if prev_piece.piece_type != PieceType.EMPTY:
-                    enemy_dict[prev_piece.piece_type] = [c for c in enemy_dict[prev_piece.piece_type] if
-                                                         c != curr_cell]
-                result = is_under_check(board, is_white)
-                if prev_piece.piece_type != PieceType.EMPTY:
-                    enemy_dict[prev_piece.piece_type].append(curr_cell)
-                piece_dict[PieceType.KING] = [king_cell]
-                cell.cell_piece = curr_cell.cell_piece
-                curr_cell.cell_piece = prev_piece
-                if not result:
-                    return False
-
-    return True
-
-
 def can_castle(board: Board, is_white: bool, move: Move):
+    """ This method validates a castling move on a certain board
+
+    :param board: The board on which we validate the move
+    :param is_white: Whether the current player is white
+    :param move: The move which is validated
+    :return: True if the move is a legal castling move
+    """
+
     if move.castle is False:
         return False
-    if is_under_check(board, is_white):
+    if is_under_check(board):
         return False
+
+    option = 'k' if move.is_king_side else 'q'
+    direction = 1 if move.is_king_side else -1
 
     row = 1 if is_white else 8
-    col = 8 if move.is_king_side else 1
-    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
-    king = king_cell.get_cell_piece()
-    rook_cell = board.get_cell(row, col)
-    rook = rook_cell.get_cell_piece()
-    if king.moved or rook_cell.get_cell_type() != PieceType.ROOK or rook.moved:
-        return False
+    path = binary_ops_utils.translate_row_col_to_cell(row, 5 + direction)
+    not_threatened = not (is_threatened(board, is_white, path)) and (1 << path) & board.get_board() == 0
 
-    direction = 1 if move.is_king_side else -1
-    moves = [Move(row, 5 + direction), Move(row, 5 + 2 * direction)]
-    cond = (lambda m: board.get_cell(m.row, m.col).is_empty() and (
-        not is_threatened(board, is_white, board.get_cell(m.row, m.col))))
-    return all(cond(m) for m in moves)
+    path = binary_ops_utils.translate_row_col_to_cell(row, 5 + 2 * direction)
+    not_threatened = not (
+        is_threatened(board, is_white,
+                      binary_ops_utils.translate_row_col_to_cell(row, 5 + 2 * direction))) and not_threatened
+    valid = (1 << path) & board.get_board() == 0 and not_threatened
+    if is_white:
+        return valid and (option.upper() in board.castling_options)
+
+    return option in board.castling_options and valid
 
 
-def castle(board: Board, is_white: bool, move: Move):
+def castle(board: Board, is_white: bool, move: Move, valid=False):
+    """ This method perform a castling move on a board
+
+    :param board: The board being used
+    :param is_white: The color of the player
+    :param move: The castling move
+    :param valid: Flag that says if the move was validated beforehand
+    """
+
     if move.castle is False:
         raise NonLegal()
-    if is_under_check(board, is_white):
+    if (not valid) and is_under_check(board):
         raise KingUnderCheck()
 
+    if not can_castle(board, is_white, move):
+        raise NonLegal()
+
     row = 1 if is_white else 8
     col = 8 if move.is_king_side else 1
+    side = -1 if move.is_king_side else 1
     king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
-    king = king_cell.get_cell_piece()
-    rook_cell = board.get_cell(row, col)
-    rook = rook_cell.get_cell_piece()
-    if king.moved or rook_cell.get_cell_type() != PieceType.ROOK or rook.moved:
-        raise NonLegal()
+    rook_cell = binary_ops_utils.translate_row_col_to_cell(row, col)
 
-    direction = 1 if move.is_king_side else -1
-    moves = [Move(row, 5 + direction), Move(row, 5 + 2 * direction)]
-    cond = (lambda m: board.get_cell(m.row, m.col).is_empty() and (
-        not is_threatened(board, is_white, board.get_cell(m.row, m.col))))
-    legal = all(cond(m) for m in moves)
-    if legal:
-        king_cell.cell_piece = Piece(False)
-        rook_cell.cell_piece = Piece(False)
-        king.moved = True
-        rook.moved = True
-        board.get_cell(row, moves[1].col).cell_piece = king
-        board.get_cell(row, moves[0].col).cell_piece = rook
-        pieces_dict = board.get_pieces_dict(is_white)
-        pieces_dict[PieceType.KING] = [board.get_cell(row, moves[1].col)]
-        pieces_dict[PieceType.ROOK] = [board.get_cell(row, moves[0].col) if c == rook_cell else c for c in
-                                       pieces_dict[PieceType.ROOK]]
+    board.remove_cell_piece(king_cell, PieceType.KING, is_white)
+    board.remove_cell_piece(rook_cell, PieceType.ROOK, is_white)
+
+    if is_white:
+        board.castling_options = ''.join([c for c in board.castling_options if c.islower()])
+    else:
+        board.castling_options = ''.join([c for c in board.castling_options if c.isupper()])
+    board.set_cell_piece(move.target, PieceType.KING, is_white)
+    board.set_cell_piece(move.target + side, PieceType.ROOK, is_white)
+    board.update_round(move.target, PieceType.KING, False)
 
 
-def update_en_passant(board: Board, cell: Cell, move: Move):
-    if move.is_en_passant:
-        pawn_advancement = 1 if cell.is_white() else -1
-        enemy = board.get_cell(move.row - pawn_advancement, move.col)
-        enemy.cell_piece = Piece(False)
-        enemy_dict = board.get_pieces_dict(not cell.is_white())
-        enemy_dict[PieceType.PAWN] = [c for c in enemy_dict[PieceType.PAWN] if c != enemy]
-    if board.en_passant_ready is not None:
-        board.en_passant_ready.en_passant = False
-        board.en_passant_ready = None
+def promote(board: Board, move: Move):
+    """ Perform the promotion of the piece by switching the PieceType of the cell
 
-
-def update_piece(board: Board, cell: Cell, move: Move, origin_cell: Cell):
-    if cell.get_cell_type() == PieceType.KING or cell.get_cell_type() == PieceType.ROOK:
-        cell.get_cell_piece().moved = True
-
-    if cell.get_cell_type() == PieceType.PAWN:
-        board.count = 0
-        pawn = cell.get_cell_piece()
-        pawn.start = False
-        pawn.en_passant = True if abs(origin_cell.get_row() - move.row) == 2 else False
-        if pawn.en_passant:
-            board.en_passant_ready = pawn
-    board.count = board.count + 1
-
-
-def promote(board: Board, cell: Cell, move: Move):
+    :param board: The board being used
+    :param move: The promotion move
+    """
     if move.promotion == PieceType.EMPTY:
         raise NonLegal()
-    if cell.get_cell_type() != PieceType.PAWN:
+
+    promotion_rank = 7 if board.is_white else 0
+    if int(move.target / 8) != promotion_rank:
         raise NonLegal()
-    promotion_rank = 8 if cell.is_white() else 1
-    if move.row != promotion_rank:
-        raise NonLegal()
 
-    pieces_dict = board.get_pieces_dict(cell.is_white())
-    color = cell.is_white()
-    if move.promotion == PieceType.ROOK:
-        piece = pieces.rook.Rook(color)
-    elif move.promotion == PieceType.BISHOP:
-        piece = pieces.bishop.Bishop(color)
-    elif move.promotion == PieceType.KNIGHT:
-        piece = pieces.knight.Knight(color)
-    else:
-        piece = pieces.queen.Queen(color)
-    cell.cell_piece = piece
-    pieces_dict[move.promotion].append(cell)
-    pieces_dict[PieceType.PAWN] = [c for c in pieces_dict[PieceType.PAWN] if c != cell]
+    board.remove_cell_piece(move.cell, PieceType.PAWN, board.is_white)
+    board.set_cell_piece(move.cell, move.promotion, board.is_white)
 
 
-def check_stops_check(board: Board, cell: Cell, move: Move):
-    piece_dict = board.get_pieces_dict(cell.is_white())
-    enemy_dict = board.get_pieces_dict(not cell.is_white())
-    king_cell = piece_dict[PieceType.KING][0]
-    curr_cell = board.get_cell(move.row, move.col)
-    prev_piece = curr_cell.get_cell_piece()
-    curr_cell.cell_piece = cell.cell_piece
-    cell.cell_piece = Piece(False)
-    if not curr_cell.is_empty():
-        piece_dict[curr_cell.get_cell_type()] = [c if c != cell else curr_cell for
-                                                 c in piece_dict[curr_cell.get_cell_type()]]
-    if prev_piece.piece_type != PieceType.EMPTY:
-        enemy_dict[prev_piece.piece_type] = [c for c in enemy_dict[prev_piece.piece_type] if
-                                             c != curr_cell]
-    result = is_under_check(board, curr_cell.is_white())
-    if prev_piece.piece_type != PieceType.EMPTY:
-        enemy_dict[prev_piece.piece_type].append(curr_cell)
-    if not curr_cell.is_empty():
-        piece_dict[curr_cell.get_cell_type()] = [c if c != curr_cell else cell for
-                                                 c in piece_dict[curr_cell.get_cell_type()]]
-    piece_dict[PieceType.KING] = [king_cell]
-    cell.cell_piece = curr_cell.cell_piece
-    curr_cell.cell_piece = prev_piece
-    return not result
+def make_move(board: Board, move: Move, valid=True):
+    """ Perform a move on the board and updates the required fields
 
+    :param board: The board
+    :param move: The move being performed
+    :param valid: Flag that determine whether the move was validated
+    """
 
-def make_move(board: Board, cell: Cell, move: Move, valid=False):
+    piece = board.get_cell_type(move.cell)
+    enable_en_passant = False
     if move.castle:
-        castle(board, cell.is_white(), move)
+        castle(board, board.is_white, move)
+        return
+
+    if move.promotion != PieceType.EMPTY and piece == PieceType.PAWN:
+        promote(board, move)
+        piece = move.promotion
 
     if not valid:
-        if not is_legal(board, cell, move):
+        if not condition(board, move, piece, board.is_white):
             raise NonLegal()
 
-        if is_under_check(board, cell.is_white()):
-            if not check_stops_check(board, cell, move):
-                raise KingUnderCheck()
-
-        if cell.get_cell_type() == PieceType.KING:
-            if is_threatened(board, cell.is_white(), board.get_cell(move.row, move.col)):
-                raise KingNonLegal()
-
-        if not check_stops_check(board, cell, move):
-            raise KingSacrifice()
-
-    if move.promotion != PieceType.EMPTY:
-        promote(board, cell, move)
-
-    target_cell = board.get_cell(move.row, move.col)
-    if target_cell.get_cell_type() != PieceType.EMPTY:
+    # Update the target cell piece if exist
+    target_type = board.get_cell_type(move.target)
+    if target_type != PieceType.EMPTY:
         board.count = 0
-        pieces_dict = board.get_pieces_dict(target_cell.is_white())
-        pieces_dict[target_cell.get_cell_type()] = [c for c in pieces_dict[target_cell.get_cell_type()] if
-                                                    c != target_cell]
-    pieces_dict = board.get_pieces_dict(cell.is_white())
-    pieces_dict[cell.get_cell_type()] = [target_cell if c == cell else c for c in pieces_dict[cell.get_cell_type()]]
-    target_cell.cell_piece = cell.get_cell_piece()
-    cell.cell_piece = Piece(False)
-    update_en_passant(board, target_cell, move)
-    update_piece(board, target_cell, move, cell)
+        board.remove_cell_piece(move.target, target_type, not board.is_white)
 
+    if piece == PieceType.PAWN:
+        diff = abs(move.cell - move.target)
+        # If move 2 rows it can be subject to en passant
+        if diff == 16:
+            enable_en_passant = True
 
-def translate_algebraic_notation_move(notation: str):
-    pieces_dict = {'q': PieceType.QUEEN, 'r': PieceType.ROOK, 'b': PieceType.BISHOP, 'n': PieceType.KNIGHT}
+        # Check if en Passant
+        if target_type == PieceType.EMPTY and (abs(move.cell - move.target) % 8 != 0):
+            side = 1 if (move.cell % 8) < (move.target % 8) else -1
+            board.remove_cell_piece(move.cell + side, PieceType.PAWN, not board.is_white)
 
-    if notation.lower() == "o-o":
-        move = Move(0, 0)
-        move.set_castle(True)
-        return move
+    # Update castling information
+    elif piece == PieceType.KING:
+        if board.is_white:
+            board.castling_options = ''.join([c for c in board.castling_options if c.islower()])
+        else:
+            board.castling_options = ''.join([c for c in board.castling_options if c.isupper()])
 
-    if notation.lower() == "o-o-o":
-        move = Move(0, 0)
-        move.set_castle(False)
-        return move
+    elif piece == PieceType.ROOK:
+        rook_row, rook_col = binary_ops_utils.translate_cell_to_row_col(move.cell)
+        if board.is_white:
+            if rook_row == 0:
+                if rook_col == 0:
+                    board.castling_options = ''.join([c for c in board.castling_options if c != 'Q'])
+                elif rook_col == 7:
+                    board.castling_options = ''.join([c for c in board.castling_options if c != 'K'])
+        else:
+            if rook_row == 0:
+                if rook_col == 0:
+                    board.castling_options = ''.join([c for c in board.castling_options if c != 'q'])
+                elif rook_col == 7:
+                    board.castling_options = ''.join([c for c in board.castling_options if c != 'k'])
 
-    if len(notation) == 3:
-        if notation[0] in pieces_dict.keys():
-            move = Move(int(notation[2]), ord(notation[1].lower()) - ord('a') + 1)
-            move.set_promotion(pieces_dict[notation[0]])
-            return move
-        raise NonLegal
-
-    if len(notation) != 2:
-        raise NonLegal
-
-    return Move(int(notation[1]), ord(notation[0].lower()) - ord('a') + 1)
-
-
-def condition(board, cell, move):
-    if is_under_check(board, cell.is_white()):
-        if not check_stops_check(board, cell, move):
-            return False
-
-    if cell.get_cell_type() == PieceType.KING:
-        if is_threatened(board, cell.is_white(), board.get_cell(move.row, move.col)):
-            return False
-
-    if not check_stops_check(board, cell, move):
-        return False
-    return True
+    # Move the origin piece to the target and update the board
+    board.remove_cell_piece(move.cell, piece, board.is_white)
+    board.set_cell_piece(move.target, piece, board.is_white)
+    board.update_round(move.target, piece, enable_en_passant)
 
 
 def get_castle_moves(board: Board, is_white: bool):
+    """ This method generate all possible castling moves for a player from certain position
+
+    :param board: The position we use
+    :param is_white: If the player is white
+    :return: A list of possible castling moves
+    """
     moves = []
     row = 1 if is_white else 8
-    move_1 = Move(row, 7)
+    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
+    move_1 = Move(king_cell, binary_ops_utils.translate_row_col_to_cell(row, 7))
     move_1.set_castle(True)
     if can_castle(board, is_white, move_1):
         moves.append(move_1)
-    move_2 = Move(row, 3)
+    move_2 = Move(king_cell, binary_ops_utils.translate_row_col_to_cell(row, 3))
     move_2.set_castle(False)
     if can_castle(board, is_white, move_2):
         moves.append(move_2)
     return moves
 
+
+def get_promotion_moves(move: Move):
+    """ Returns a list of all legal promotion cases of a promotion move
+
+    :param move: The promotion move
+    :return: A list of all the possible promotions corresponding to the move
+    """
+    result = []
+    relevant_pieces = [PieceType.QUEEN, PieceType.ROOK, PieceType.KNIGHT, PieceType.BISHOP]
+    for piece in relevant_pieces:
+        tmp = Move(move.cell, move.target)
+        tmp.set_promotion(piece)
+        result.append(tmp)
+    return result
+
+
 def check_stalemate(board: Board):
+    """ This method returns if the board is in stalemate case, note: I haven't considered all the stalemate rules
+
+    :param board: The position we check
+    :return: If the position is in stalemate
+    """
     if board.count >= 50:
         return True
 
