@@ -3,12 +3,12 @@
 Personal project to create a working chess game with graphical interface in python for learning purposes
 ## Board
 The board is the main data structure of the project. 
-The board uses bitmaps to repressent the current position of the board, in addition to that it also holds two dictionaries to map piece to the cells where it's in,
+The board uses bitmaps to represent the current position of the board, in addition to that it also holds two dictionaries to map piece to the cells where it's in,
 based on piece color.
 ### features
 * Import position from Forsyth–Edwards Notation (FEN)
 * Maintaining maps of attacks for each piece type by player
-* Maintaing a map of all the pinned pieces
+* Maintain a map of all the pinned pieces
 * Set/remove piece from a cell
 * Get all pseudo-legal moves from a cell
 ### Intended upgrades
@@ -29,3 +29,6 @@ To run the chess game, you'll need Python 3.7 or higher. Follow these steps:
 2. Navigate to the project folder: `cd chess-project`
 3. Install the required dependencies: `pip install pygame`
 4. Run `gui_game.py` to play the game
+
+## Attributions
+<a href="https://www.flaticon.com/free-icons/chess" title="chess icons">Chess icons created by deemakdaksina - Flaticon</a>
