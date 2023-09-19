@@ -29,3 +29,6 @@ To run the chess game, you'll need Python 3.7 or higher. Follow these steps:
 2. Navigate to the project folder: `cd chess-project`
 3. Install the required dependencies: `pip install pygame`
 4. Run `gui_game.py` to play the game
+
+## Attributions
+<a href="https://www.flaticon.com/free-icons/chess" title="chess icons">Chess icons created by deemakdaksina - Flaticon</a>
