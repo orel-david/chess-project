@@ -1,3 +1,5 @@
+from typing import List
+
 import binary_ops_utils
 from board import Board
 from chess_exceptions import NonLegal, KingUnderCheck
@@ -14,8 +16,12 @@ class Move:
     castle: bool
     is_king_side: bool
     promotion: PieceType
+    enemy_type: PieceType
+    enemy_cell: int
+    prev_castling: str
+    prev_en_passant: int
 
-    def __init__(self, cell, tar):
+    def __init__(self, cell: int, tar: int):
         """ Initialize to a standard move
 
         :param cell: The origin cell index
@@ -28,8 +34,12 @@ class Move:
         self.is_king_side = False
         self.is_en_passant = False
         self.promotion = PieceType.EMPTY
+        self.enemy_type = PieceType.EMPTY
+        self.enemy_cell = 0
+        self.prev_en_passant = 0
+        self.prev_castling = ''
 
-    def set_castle(self, is_king_side):
+    def set_castle(self, is_king_side: bool) -> None:
         """ This defines the move to be a castling move
 
         :param is_king_side: Whether to castling is to the king side
@@ -37,7 +47,7 @@ class Move:
         self.castle = True
         self.is_king_side = is_king_side
 
-    def set_promotion(self, piece):
+    def set_promotion(self, piece: PieceType) -> None:
         """ Define the move as a promotion move and set the target piece
 
         :param piece: The piece which it will promote to
@@ -45,7 +55,7 @@ class Move:
         self.promotion = piece
 
 
-def is_pseudo_legal(board: Board, move: Move):
+def is_pseudo_legal(board: Board, move: Move) -> bool:
     """ Return whether a move is pseudo legal on a board
 
     :param board: The board on which we check
@@ -56,7 +66,7 @@ def is_pseudo_legal(board: Board, move: Move):
     return moves & binary_ops_utils.switch_cell_bit(0, move.target, True) != 0
 
 
-def is_threatened(board: Board, is_white: bool, cell: int):
+def is_threatened(board: Board, is_white: bool, cell: int) -> bool:
     """ Returns if a cell is threatened
 
     :param board: The board on which we check
@@ -67,7 +77,7 @@ def is_threatened(board: Board, is_white: bool, cell: int):
     return binary_ops_utils.switch_cell_bit(0, cell, True) & board.get_attacks(is_white) != 0
 
 
-def get_all_legal_moves(board: Board, cell: int, piece: PieceType, is_white: bool):
+def get_all_legal_moves(board: Board, cell: int, piece: PieceType, is_white: bool) -> List[Move]:
     """ Returns all the legal move from a certain cell with a certain PieceType
 
     :param board: The board we use
@@ -98,7 +108,7 @@ def get_all_legal_moves(board: Board, cell: int, piece: PieceType, is_white: boo
     return moves
 
 
-def condition(board: Board, move: Move, piece: PieceType, is_white: bool):
+def condition(board: Board, move: Move, piece: PieceType, is_white: bool) -> bool:
     """ Returns if a move on the board for a certain piece is legal/
 
     :param board: The board we check
@@ -205,6 +215,10 @@ def can_castle(board: Board, is_white: bool, move: Move):
         is_threatened(board, is_white,
                       binary_ops_utils.translate_row_col_to_cell(row, 5 + 2 * direction))) and not_threatened
     valid = (1 << path) & board.get_board() == 0 and not_threatened
+
+    if not move.is_king_side:
+        valid = valid and (1 << binary_ops_utils.translate_row_col_to_cell(row, 2)) & board.get_board() == 0
+
     if is_white:
         return valid and (option.upper() in board.castling_options)
 
@@ -272,6 +286,8 @@ def make_move(board: Board, move: Move, valid=True):
     """
 
     piece = board.get_cell_type(move.cell)
+    target_type = board.get_cell_type(move.target)
+    fill_undo_info(board, move, target_type)
     enable_en_passant = False
     if move.castle:
         castle(board, board.is_white, move)
@@ -286,10 +302,10 @@ def make_move(board: Board, move: Move, valid=True):
             raise NonLegal()
 
     # Update the target cell piece if exist
-    target_type = board.get_cell_type(move.target)
     if target_type != PieceType.EMPTY:
         board.count = 0
         board.remove_cell_piece(move.target, target_type, not board.is_white)
+        move.enemy_cell = move.target
 
     if piece == PieceType.PAWN:
         diff = abs(move.cell - move.target)
@@ -301,6 +317,8 @@ def make_move(board: Board, move: Move, valid=True):
         if target_type == PieceType.EMPTY and (abs(move.cell - move.target) % 8 != 0):
             side = 1 if (move.cell % 8) < (move.target % 8) else -1
             board.remove_cell_piece(move.cell + side, PieceType.PAWN, not board.is_white)
+            move.enemy_cell = move.cell + side
+            move.enemy_type = PieceType.PAWN
 
     # Update castling information
     elif piece == PieceType.KING:
@@ -376,3 +394,11 @@ def check_stalemate(board: Board):
         return True
 
     return board.is_insufficient()
+
+
+def fill_undo_info(board: Board, move: Move, enemy_type: PieceType) -> None:
+    move.prev_castling = board.castling_options
+    move.prev_en_passant = board.en_passant_ready
+    move.enemy_type = enemy_type
+
+

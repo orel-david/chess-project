@@ -1,3 +1,5 @@
+from typing import Dict, List, Optional
+
 import binary_ops_utils
 from piece import PieceType
 
@@ -40,7 +42,7 @@ class Board:
                   PieceType.KING: 0, PieceType.ROOK: 0}
     threats = []
 
-    def __init__(self, fen_string=default_fen):
+    def __init__(self, fen_string=default_fen) -> None:
         """ This method initiate the board to state by a fen notation.
 
         :param fen_string: The notation that represent the current board, the default is initial board.
@@ -61,7 +63,7 @@ class Board:
         self.__update_attacker__(False)
         self.__update_pins_and_checks__(True)
 
-    def import_from_fen(self, fen_string: str):
+    def import_from_fen(self, fen_string: str) -> None:
         """ This method receives a fen_string and initialize the relevant values of the board with it.
 
         :param fen_string: The notation that represent the state of the game with piece locations and castling options.
@@ -109,14 +111,14 @@ class Board:
 
                     j += 1
 
-    def get_board(self):
+    def get_board(self) -> int:
         """
         :return: The board bitmap, each index is 0 if the relevant cell is empty else 1
         """
 
         return self.board
 
-    def is_cell_empty(self, cell: int):
+    def is_cell_empty(self, cell: int) -> board:
         """ Returns if a certain cell is empty.
 
         :param cell: The cell index of the cell we check
@@ -125,7 +127,7 @@ class Board:
 
         return (self.board & (1 << cell)) == 0
 
-    def is_cell_colored(self, cell: int, is_white: bool):
+    def is_cell_colored(self, cell: int, is_white: bool) -> bool:
         """ This method returns if a certain cell is in specified color
 
         :param cell: The cell index
@@ -136,7 +138,7 @@ class Board:
         board = self.white_board if is_white else self.black_board
         return (board & (1 << cell)) != 0
 
-    def set_cell_piece(self, cell: int, piece: PieceType, is_white: bool):
+    def set_cell_piece(self, cell: int, piece: PieceType, is_white: bool) -> None:
         """ This method set a certain cell to hold a certain piece and update the required object fields
 
         :param cell: The cell in which we add the piece
@@ -153,7 +155,7 @@ class Board:
             self.black_pieces[piece].append(cell)
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, True)
 
-    def remove_cell_piece(self, cell: int, piece: PieceType, is_white: bool):
+    def remove_cell_piece(self, cell: int, piece: PieceType, is_white: bool) -> None:
         """ This method remove a piece from a certain cell and update the required object fields
 
         :param cell: The cell in which we remove the piece
@@ -170,7 +172,7 @@ class Board:
             self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != cell]
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, False)
 
-    def get_pieces_dict(self, is_white: bool):
+    def get_pieces_dict(self, is_white: bool) -> Dict[PieceType, List[int]]:
         """ This function returns the dictionary of the cells in which certain piece type is found.
 
         :param is_white: If we want the dict for the white pieces or not
@@ -179,7 +181,7 @@ class Board:
 
         return self.white_pieces if is_white else self.black_pieces
 
-    def is_insufficient(self):
+    def is_insufficient(self) -> bool:
         """ This function returns if the board pieces are insufficient
 
         :return: True if the board state is insufficient for a mate, False otherwise.
@@ -192,7 +194,7 @@ class Board:
                     self.black_pieces[PieceType.BISHOP] + self.black_pieces[PieceType.KNIGHT]) <= 1
         return False
 
-    def is_type_of(self, cell: int, piece: PieceType):
+    def is_type_of(self, cell: int, piece: PieceType) -> bool:
         """ This function return if the PieceType of the a certain cell in the board is the piece it received.
 
         :param cell: The cell index of the cell we check
@@ -202,7 +204,7 @@ class Board:
 
         return (self.piece_maps[piece] & (1 << cell)) != 0
 
-    def get_cell_type(self, cell: int):
+    def get_cell_type(self, cell: int) -> PieceType:
         """ Returns The PieceType of certain cell
 
         :param cell: The cell index
@@ -228,7 +230,7 @@ class Board:
             else:
                 return PieceType.KNIGHT
 
-    def __update_pawn_moves__(self):
+    def __update_pawn_moves__(self) -> None:
         """
         This function creates an array of all the possible capture moves for a pawn based on cell index.
         This function is made for internal use.
@@ -255,7 +257,7 @@ class Board:
         self.pawn_moves.append(white_moves)
         self.pawn_moves.append(black_moves)
 
-    def get_pawn_captures(self, cell: int, is_white: bool):
+    def get_pawn_captures(self, cell: int, is_white: bool) -> int:
         """ Returns the possible pawn capture moves for a certain cell based on pawn color
 
         :param cell: The cell index
@@ -266,7 +268,7 @@ class Board:
         captures = self.pawn_moves[0] if is_white else self.pawn_moves[1]
         return captures[cell]
 
-    def get_pawn_moves(self, cell: int, is_white: bool):
+    def get_pawn_moves(self, cell: int, is_white: bool) -> int:
         """ This function returns a bitmap of all the legal pawn moves on the board
 
         :param cell: The cell index
@@ -287,9 +289,10 @@ class Board:
         if (forward & 0x40) == 0:
             moves = binary_ops_utils.switch_cell_bit(0, forward, True)
             forward = forward + pawn_advancement
+            moves = moves & (~self.board)
             if (forward & 0x40) == 0:
-                moves = binary_ops_utils.switch_cell_bit(moves, forward, row == start_row)
-        moves = moves & (~self.board)
+                moves = binary_ops_utils.switch_cell_bit(moves, forward, row == start_row and (moves != 0))
+                moves = moves & (~self.board)
 
         if self.en_passant_ready != 0 and row == en_passant_row:
             if cell + 1 == self.en_passant_ready:
@@ -320,7 +323,7 @@ class Board:
                     val = binary_ops_utils.switch_cell_bit(val, option[0] * 8 + option[1], True)
                 self.knight_moves.append(val)
 
-    def __update_king_moves__(self):
+    def __update_king_moves__(self) -> None:
         """
         This function creates an array of all the possible moves for a king based on cell index.
         This function is made for internal use
@@ -340,7 +343,7 @@ class Board:
                     val = binary_ops_utils.switch_cell_bit(val, option[0] * 8 + option[1], True)
                 self.king_moves.append(val)
 
-    def get_king_cell_moves(self, cell: int, is_white: bool):
+    def get_king_cell_moves(self, cell: int, is_white: bool) -> int:
         """ Returns pseudo-legal move for a king at a certain cell.
 
         :param cell: The king's cell
@@ -351,7 +354,7 @@ class Board:
         board = self.white_board if is_white else self.black_board
         return self.king_moves[cell] & (~board)
 
-    def get_knight_cell_moves(self, cell: int, is_white):
+    def get_knight_cell_moves(self, cell: int, is_white) -> int:
         """ This returns the pseudo legal knight moves
 
         :param cell: The knight's cell
@@ -362,7 +365,7 @@ class Board:
         board = self.white_board if is_white else self.black_board
         return self.knight_moves[cell] & (~board)
 
-    def __update_distances__(self):
+    def __update_distances__(self) -> None:
         """
         This function creates an array of all the possible moves for a vertical line based on cell index.
         This function is made for internal use
@@ -376,7 +379,7 @@ class Board:
                 self.vertical_distances.append((east, west, north, south,
                                                 min(north, west), min(south, east), min(north, east), min(south, west)))
 
-    def get_vertical_cell_moves(self, cell: int, piece: PieceType, is_white: bool, for_attacks=False):
+    def get_vertical_cell_moves(self, cell: int, piece: PieceType, is_white: bool, for_attacks=False) -> int:
         """ This function returns all pseudo-legal vertical move by cell, piece type and color
 
         :param cell: The piece cell
@@ -385,7 +388,6 @@ class Board:
         :param for_attacks: Flag that is used when checking if a piece is supported by another piece.
         :return: Bitmap of pseudo-legal moves
         """
-        # TODO: Optimize to use logical operations and masks if necessary
 
         start = 4 if piece == PieceType.BISHOP else 0
         end = 4 if piece == PieceType.ROOK else 8
@@ -425,7 +427,7 @@ class Board:
             return self.get_knight_cell_moves(cell, is_white)
         return self.get_vertical_cell_moves(cell, piece, is_white, for_attacks)
 
-    def get_moves_by_cell(self, cell: int, is_white: bool, for_attacks=False):
+    def get_moves_by_cell(self, cell: int, is_white: bool, for_attacks=False) -> Optional[int]:
         """ Returns all pseudo-legal moves from a cell for a certain color.
 
         :param cell: The cell's index
@@ -440,7 +442,7 @@ class Board:
 
         return self.get_moves_by_piece(cell, is_white, piece, for_attacks)
 
-    def __update_attacker__(self, is_white, piece=PieceType.EMPTY, new_cell=0):
+    def __update_attacker__(self, is_white: bool, piece=PieceType.EMPTY, new_cell=0) -> None:
         """ This is a method to update the attacker's bitmaps and is for internal use only.
 
         :param is_white: The color which we update
@@ -489,7 +491,7 @@ class Board:
         self.attackers[index] |= self.attackers_maps[PieceType.KNIGHT][index]
         self.attackers[index] |= self.sliding_attacks
 
-    def get_attacks(self, is_white: bool):
+    def get_attacks(self, is_white: bool) -> int:
         """ Returns the bitmap of the attacks on certain player.
 
         :param is_white: Player's color
@@ -497,7 +499,7 @@ class Board:
         """
         return self.attackers[1] if is_white else self.attackers[0]
 
-    def __update_pins_and_checks__(self, is_white: bool):
+    def __update_pins_and_checks__(self, is_white: bool) -> None:
         """ This is function for internal use to update the attacks, pin, threats and checks on the king
 
         :param is_white: The king's color
@@ -577,7 +579,7 @@ class Board:
                 self.threats.append(cell)
                 return
 
-    def is_pinned(self, cell: int):
+    def is_pinned(self, cell: int) -> bool:
         """ This returns whether a cell is pinned by the opponent.
 
         :param cell: The cell index
@@ -589,7 +591,7 @@ class Board:
 
         return self.pin_map & (1 << cell) != 0
 
-    def update_round(self, target_cell, piece: PieceType, enables_en_passant=False):
+    def update_round(self, target_cell: int, piece: PieceType, enables_en_passant=False) -> None:
         """ This method updates the board state after a move.
 
         :param target_cell: The move's destination cell
