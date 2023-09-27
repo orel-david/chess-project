@@ -61,7 +61,7 @@ class Board:
             PieceType.ROOK]
         self.__update_attacker__(True)
         self.__update_attacker__(False)
-        self.__update_pins_and_checks__(True)
+        self.__update_pins_and_checks__(self.is_white)
 
     def import_from_fen(self, fen_string: str) -> None:
         """ This method receives a fen_string and initialize the relevant values of the board with it.
@@ -86,8 +86,9 @@ class Board:
         self.castling_options = parts[2]
 
         # The fourth part holds a pawn cell that can be en-passant against.
+        diff = -1 if self.is_white else 1
         self.en_passant_ready = 0 if parts[3] == "-" else binary_ops_utils.translate_row_col_to_cell(
-            int(parts[3][1]) - 1, ord(parts[3][0].lower()) - ord('a'))
+            int(parts[3][1]) + diff, ord(parts[3][0].lower()) - ord('a') + 1)
 
         # Read the row and update the board state.
         for i in range(8):
@@ -257,6 +258,66 @@ class Board:
         self.pawn_moves.append(white_moves)
         self.pawn_moves.append(black_moves)
 
+    def __is_safe_en_passant__(self, pawn_cell: int, enemy_cell: int, is_white: bool) -> bool:
+        king_cell = self.get_pieces_dict(is_white)[PieceType.KING][0]
+        king_row, king_col = binary_ops_utils.translate_cell_to_row_col(king_cell)
+        pawn_row, pawn_col = binary_ops_utils.translate_cell_to_row_col(pawn_cell)
+        if king_col == pawn_col:
+            direction = 8 if king_row < pawn_row else -8
+            checked_cell = king_cell + direction
+            threat = False
+            block = False
+            while checked_cell & 0x40 == 0:
+                if self.is_cell_colored(checked_cell, is_white):
+                    if checked_cell != pawn_cell:
+                        # There is a blocking piece
+                        block = True
+
+                elif self.is_cell_colored(checked_cell, not is_white):
+                    is_threat = ((1 << checked_cell) & self.sliding != 0) and (
+                        not self.is_type_of(checked_cell, PieceType.BISHOP))
+
+                    if is_threat:
+                        if not block:
+                            return False
+
+                    block = True
+                checked_cell = checked_cell + direction
+
+            return not threat
+
+        if king_row == pawn_row:
+            direction = 1 if king_col < pawn_col else -1
+            start_col = king_col + 1 if king_col < pawn_col else -1
+            end_col = 8 if king_col < pawn_col else king_col
+            start_cell = 8 * king_row + start_col
+            end_cell = 8 * king_row + end_col
+            block = False
+            if direction < 0:
+                start_cell, end_cell = end_cell, start_cell
+
+            for checked_cell in range(start_cell, end_cell, direction):
+                if self.is_cell_colored(checked_cell, is_white):
+                    if checked_cell != pawn_cell and checked_cell != king_cell:
+                        # There is a blocking piece
+                        block = True
+
+                elif self.is_cell_colored(checked_cell, not is_white):
+                    if checked_cell == enemy_cell:
+                        continue
+
+                    is_threat = ((1 << checked_cell) & self.sliding != 0) and (
+                        not self.is_type_of(checked_cell, PieceType.BISHOP))
+
+                    if is_threat:
+                        if not block:
+                            return False
+
+                    block = True
+            return True
+
+        return True
+
     def get_pawn_captures(self, cell: int, is_white: bool) -> int:
         """ Returns the possible pawn capture moves for a certain cell based on pawn color
 
@@ -296,9 +357,13 @@ class Board:
 
         if self.en_passant_ready != 0 and row == en_passant_row:
             if cell + 1 == self.en_passant_ready:
-                moves = binary_ops_utils.switch_cell_bit(moves, cell + 9, True)
+                pawn_advancement = 9 if is_white else -7
+                if self.__is_safe_en_passant__(cell, cell + 1, is_white):
+                    moves = binary_ops_utils.switch_cell_bit(moves, cell + pawn_advancement, True)
             elif cell - 1 == self.en_passant_ready:
-                moves = binary_ops_utils.switch_cell_bit(moves, cell + 7, True)
+                pawn_advancement = 7 if is_white else -9
+                if self.__is_safe_en_passant__(cell, cell - 1, is_white):
+                    moves = binary_ops_utils.switch_cell_bit(moves, cell + pawn_advancement, True)
 
         return moves | captures
 
@@ -520,7 +585,7 @@ class Board:
         self.pin_map = 0
         self.pin_in_position = False
         self.position_in_check = False
-        self.position_in_double_check_check = False
+        self.position_in_double_check = False
         self.check_map = 0
         self.threats = []
         start = 0

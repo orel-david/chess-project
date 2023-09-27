@@ -140,6 +140,12 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool) -> boo
         if (1 << move.target) & board.check_map != 0 and (not board.is_pinned(cell)):
             return True
 
+        # check for en_passant help
+        if piece == PieceType.PAWN:
+            direction = -8 if is_white else 8
+            en_capture = move.target + direction
+            if en_capture == board.en_passant_ready:
+                return (1 << en_capture) & board.check_map != 0 and (not board.is_pinned(cell))
         return False
 
     if not board.is_pinned(cell):
@@ -418,8 +424,8 @@ def undo_move(board: Board, move: Move):
         king_target = binary_ops_utils.translate_row_col_to_cell(start_row, king_col)
         board.remove_cell_piece(rook_origin, PieceType.ROOK, color)
         board.remove_cell_piece(king_cell, PieceType.KING, color)
-        board.remove_cell_piece(king_target, PieceType.KING, color)
-        board.remove_cell_piece(rook_target, PieceType.ROOK, color)
+        board.set_cell_piece(king_target, PieceType.KING, color)
+        board.set_cell_piece(rook_target, PieceType.ROOK, color)
         board.update_round(move.target, PieceType.KING, False)
         return
 

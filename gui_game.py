@@ -21,7 +21,7 @@ def game():
     This is the game main function which initialize the board and GUI and starts the game loop
     """
     gameboard = board.Board()
-    gui = GUI()
+    gui = GUI(gameboard.is_white)
     gui.draw_board(gameboard)
     while not (Utils.is_mate(gameboard, gui.is_white()) or Utils.check_stalemate(gameboard)):
         gui.handle_events(gameboard)

@@ -51,10 +51,11 @@ class GUI:
     moves: Optional[Sequence[Move]]
     threats: Sequence[int]
 
-    def __init__(self):
+    def __init__(self, is_white=True):
         """
         This method initialize the necessary fields for the class and the pygame module which we use.
         """
+        self.white = is_white
         pygame.init()
         self.origin = -1
         self.move = None
