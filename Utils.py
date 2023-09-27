@@ -402,3 +402,31 @@ def fill_undo_info(board: Board, move: Move, enemy_type: PieceType) -> None:
     move.enemy_type = enemy_type
 
 
+def undo_move(board: Board, move: Move):
+    board.castling_options = move.prev_castling
+
+    if move.castle:
+        start_row = 8 if board.is_white else 1
+        king_col = 5
+        king_curr_col = 7 if move.is_king_side else 3
+        rook_position = 6 if move.is_king_side else 4
+        rook_target = 8 if move.is_king_side else 1
+        color = not board.is_white
+        rook_origin = binary_ops_utils.translate_row_col_to_cell(start_row, rook_position)
+        rook_target = binary_ops_utils.translate_row_col_to_cell(start_row, rook_target)
+        king_cell = binary_ops_utils.translate_row_col_to_cell(start_row, king_curr_col)
+        king_target = binary_ops_utils.translate_row_col_to_cell(start_row, king_col)
+        board.remove_cell_piece(rook_origin, PieceType.ROOK, color)
+        board.remove_cell_piece(king_cell, PieceType.KING, color)
+        board.remove_cell_piece(king_target, PieceType.KING, color)
+        board.remove_cell_piece(rook_target, PieceType.ROOK, color)
+        board.update_round(move.target, PieceType.KING, False)
+        return
+
+    origin_piece = board.get_cell_type(move.target)
+    board.remove_cell_piece(move.target, origin_piece, not board.is_white)
+    board.set_cell_piece(move.cell, origin_piece, not board.is_white)
+    if move.enemy_type != PieceType.EMPTY:
+        board.set_cell_piece(move.enemy_cell, move.enemy_type, board.is_white)
+    board.update_round(move.enemy_cell, move.enemy_type)
+    board.en_passant_ready = move.prev_en_passant
