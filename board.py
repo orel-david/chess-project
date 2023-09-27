@@ -392,6 +392,8 @@ class Board:
         start = 4 if piece == PieceType.BISHOP else 0
         end = 4 if piece == PieceType.ROOK else 8
         result = 0
+        ray_mark = False
+        enemy_king = self.get_pieces_dict(not is_white)[PieceType.KING][0]
         for i in range(start, end):
             direction = self.directions[i]
             for j in range(self.vertical_distances[cell][i]):
@@ -405,11 +407,17 @@ class Board:
 
                 result = binary_ops_utils.switch_cell_bit(result, target, True)
 
-                if not self.is_cell_empty(target):
+                if ray_mark:
                     break
+
+                if not self.is_cell_empty(target):
+                    if not for_attacks or enemy_king != target:
+                        break
+                    else:
+                        ray_mark = True
         return result
 
-    def get_moves_by_piece(self, cell: int, is_white: bool, piece: PieceType, for_attacks=False):
+    def get_moves_by_piece(self, cell: int, is_white: bool, piece: PieceType, for_attacks=False) -> int:
         """ Returns all pseudo-legal moves from a cell for a certain piece type and color.
 
         :param cell: The cell's index
@@ -422,9 +430,9 @@ class Board:
         if piece == PieceType.PAWN:
             return self.get_pawn_captures(cell, is_white) if for_attacks else self.get_pawn_moves(cell, is_white)
         elif piece == PieceType.KING:
-            return self.get_king_cell_moves(cell, is_white)
+            return self.king_moves[cell] if for_attacks else self.get_king_cell_moves(cell, is_white)
         elif piece == PieceType.KNIGHT:
-            return self.get_knight_cell_moves(cell, is_white)
+            return self.knight_moves[cell] if for_attacks else self.get_knight_cell_moves(cell, is_white)
         return self.get_vertical_cell_moves(cell, piece, is_white, for_attacks)
 
     def get_moves_by_cell(self, cell: int, is_white: bool, for_attacks=False) -> Optional[int]:
