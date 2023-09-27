@@ -119,7 +119,7 @@ class Board:
 
         return self.board
 
-    def is_cell_empty(self, cell: int) -> board:
+    def is_cell_empty(self, cell: int) -> bool:
         """ Returns if a certain cell is empty.
 
         :param cell: The cell index of the cell we check
