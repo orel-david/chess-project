@@ -15,39 +15,38 @@ class Board:
 
     pieces_dict = {'q': PieceType.QUEEN, 'r': PieceType.ROOK, 'b': PieceType.BISHOP, 'n': PieceType.KNIGHT,
                    'k': PieceType.KING, 'p': PieceType.PAWN}
-    castling_options = ''
-    is_white: bool
-    en_passant_ready = 0
-    count = 0
-    board = 0
-    white_board = 0
-    black_board = 0
     pawn_moves = []
     knight_moves = []
     king_moves = []
     vertical_distances = []
     directions = [1, -1, 8, -8, 7, -7, 9, -9]
-    sliding = 0
-    sliding_attacks = 0
-    attackers = [0, 0]
-    pin_in_position = False
-    attackers_maps = {PieceType.PAWN: [0, 0], PieceType.QUEEN: [0, 0], PieceType.BISHOP: [0, 0],
-                      PieceType.KNIGHT: [0, 0],
-                      PieceType.KING: [0, 0], PieceType.ROOK: [0, 0]}
-    pin_map = 0
-    check_map = 0
-    position_in_check = False
-    position_in_double_check = False
-    piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
-                  PieceType.KING: 0, PieceType.ROOK: 0}
-    threats = []
 
     def __init__(self, fen_string=default_fen) -> None:
         """ This method initiate the board to state by a fen notation.
 
         :param fen_string: The notation that represent the current board, the default is initial board.
         """
-
+        self.castling_options = ''
+        self.is_white = True
+        self.en_passant_ready = 0
+        self.count = 0
+        self.board = 0
+        self.white_board = 0
+        self.black_board = 0
+        self.sliding = 0
+        self.sliding_attacks = 0
+        self.attackers = [0, 0]
+        self.pin_in_position = False
+        self.attackers_maps = {PieceType.PAWN: [0, 0], PieceType.QUEEN: [0, 0], PieceType.BISHOP: [0, 0],
+                               PieceType.KNIGHT: [0, 0],
+                               PieceType.KING: [0, 0], PieceType.ROOK: [0, 0]}
+        self.pin_map = 0
+        self.check_map = 0
+        self.position_in_check = False
+        self.position_in_double_check = False
+        self.piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
+                           PieceType.KING: 0, PieceType.ROOK: 0}
+        self.threats = []
         self.black_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
                              PieceType.KING: [], PieceType.ROOK: []}
         self.white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
