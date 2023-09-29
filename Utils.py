@@ -155,7 +155,7 @@ def condition(board: Board, move: Move, piece: PieceType, is_white: bool) -> boo
     return abs(binary_ops_utils.get_direction(move.cell, king_cell)) == abs(step)
 
 
-def get_threats(board: Board):
+def get_threats(board: Board) -> List[int]:
     """ Returns all the threats to the current player's king
 
     :param board: The board of the position
@@ -165,7 +165,7 @@ def get_threats(board: Board):
     return board.threats
 
 
-def is_under_check(board: Board):
+def is_under_check(board: Board) -> bool:
     """ Return if there is a check
 
     :param board: The board of the position
@@ -174,7 +174,7 @@ def is_under_check(board: Board):
     return board.position_in_check
 
 
-def is_mate(board: Board, is_white: bool):
+def is_mate(board: Board, is_white: bool) -> bool:
     """ Return if the current player is under mate.
 
     :param board: The board of the position
@@ -195,7 +195,7 @@ def is_mate(board: Board, is_white: bool):
     return False
 
 
-def can_castle(board: Board, is_white: bool, move: Move):
+def can_castle(board: Board, is_white: bool, move: Move) -> bool:
     """ This method validates a castling move on a certain board
 
     :param board: The board on which we validate the move
@@ -231,7 +231,7 @@ def can_castle(board: Board, is_white: bool, move: Move):
     return option in board.castling_options and valid
 
 
-def castle(board: Board, is_white: bool, move: Move, valid=False):
+def castle(board: Board, is_white: bool, move: Move, valid=False) -> None:
     """ This method perform a castling move on a board
 
     :param board: The board being used
@@ -266,7 +266,7 @@ def castle(board: Board, is_white: bool, move: Move, valid=False):
     board.update_round(move.target, PieceType.KING, False)
 
 
-def promote(board: Board, move: Move):
+def promote(board: Board, move: Move) -> None:
     """ Perform the promotion of the piece by switching the PieceType of the cell
 
     :param board: The board being used
@@ -283,7 +283,7 @@ def promote(board: Board, move: Move):
     board.set_cell_piece(move.cell, move.promotion, board.is_white)
 
 
-def make_move(board: Board, move: Move, valid=True):
+def make_move(board: Board, move: Move, valid=True) -> None:
     """ Perform a move on the board and updates the required fields
 
     :param board: The board
@@ -311,6 +311,8 @@ def make_move(board: Board, move: Move, valid=True):
     if target_type != PieceType.EMPTY:
         board.count = 0
         board.remove_cell_piece(move.target, target_type, not board.is_white)
+        if target_type == PieceType.ROOK:
+            update_castling_option(move.target, board, not board.is_white)
         move.enemy_cell = move.target
 
     if piece == PieceType.PAWN:
@@ -334,19 +336,7 @@ def make_move(board: Board, move: Move, valid=True):
             board.castling_options = ''.join([c for c in board.castling_options if c.isupper()])
 
     elif piece == PieceType.ROOK:
-        rook_row, rook_col = binary_ops_utils.translate_cell_to_row_col(move.cell)
-        if board.is_white:
-            if rook_row == 0:
-                if rook_col == 0:
-                    board.castling_options = ''.join([c for c in board.castling_options if c != 'Q'])
-                elif rook_col == 7:
-                    board.castling_options = ''.join([c for c in board.castling_options if c != 'K'])
-        else:
-            if rook_row == 0:
-                if rook_col == 0:
-                    board.castling_options = ''.join([c for c in board.castling_options if c != 'q'])
-                elif rook_col == 7:
-                    board.castling_options = ''.join([c for c in board.castling_options if c != 'k'])
+        update_castling_option(move.cell, board, board.is_white)
 
     # Move the origin piece to the target and update the board
     board.remove_cell_piece(move.cell, piece, board.is_white)
@@ -354,7 +344,7 @@ def make_move(board: Board, move: Move, valid=True):
     board.update_round(move.target, piece, enable_en_passant)
 
 
-def get_castle_moves(board: Board, is_white: bool):
+def get_castle_moves(board: Board, is_white: bool) -> List[Move]:
     """ This method generate all possible castling moves for a player from certain position
 
     :param board: The position we use
@@ -375,7 +365,7 @@ def get_castle_moves(board: Board, is_white: bool):
     return moves
 
 
-def get_promotion_moves(move: Move):
+def get_promotion_moves(move: Move) -> List[Move]:
     """ Returns a list of all legal promotion cases of a promotion move
 
     :param move: The promotion move
@@ -390,7 +380,7 @@ def get_promotion_moves(move: Move):
     return result
 
 
-def check_stalemate(board: Board):
+def check_stalemate(board: Board) -> bool:
     """ This method returns if the board is in stalemate case, note: I haven't considered all the stalemate rules
 
     :param board: The position we check
@@ -403,12 +393,45 @@ def check_stalemate(board: Board):
 
 
 def fill_undo_info(board: Board, move: Move, enemy_type: PieceType) -> None:
+    """ This method fills information about the changes the move performed on the board.
+
+    :param board: The game board
+    :param move: the move being performed
+    :param enemy_type: The type of the cell we move into
+    """
     move.prev_castling = board.castling_options
     move.prev_en_passant = board.en_passant_ready
     move.enemy_type = enemy_type
 
 
-def undo_move(board: Board, move: Move):
+def update_castling_option(rook_cell: int, board: Board, is_white: bool) -> None:
+    """ This method updates the castling options after change in the position of the rooks.
+
+    :param rook_cell: The index of the rook's cell
+    :param board: The gameboard
+    :param is_white: The color of the rook
+    """
+    rook_row, rook_col = binary_ops_utils.translate_cell_to_row_col(rook_cell)
+    if is_white:
+        if rook_row == 0:
+            if rook_col == 0:
+                board.castling_options = ''.join([c for c in board.castling_options if c != 'Q'])
+            elif rook_col == 7:
+                board.castling_options = ''.join([c for c in board.castling_options if c != 'K'])
+    else:
+        if rook_row == 7:
+            if rook_col == 0:
+                board.castling_options = ''.join([c for c in board.castling_options if c != 'q'])
+            elif rook_col == 7:
+                board.castling_options = ''.join([c for c in board.castling_options if c != 'k'])
+
+
+def undo_move(board: Board, move: Move) -> None:
+    """ This method restores the board state to before the move which was performed
+
+    :param board: The gameboard
+    :param move: The last move performed on the board
+    """
     board.castling_options = move.prev_castling
 
     if move.castle:
@@ -430,6 +453,12 @@ def undo_move(board: Board, move: Move):
         return
 
     origin_piece = board.get_cell_type(move.target)
+
+    if move.promotion != PieceType.EMPTY:
+        board.remove_cell_piece(move.target, move.promotion, not board.is_white)
+        board.set_cell_piece(move.target, PieceType.PAWN, not board.is_white)
+        origin_piece = PieceType.PAWN
+
     board.remove_cell_piece(move.target, origin_piece, not board.is_white)
     board.set_cell_piece(move.cell, origin_piece, not board.is_white)
     if move.enemy_type != PieceType.EMPTY:
