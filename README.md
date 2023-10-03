@@ -11,17 +11,12 @@ based on piece color.
 * Maintain a map of all the pinned pieces
 * Set/remove piece from a cell
 * Get all pseudo-legal moves from a cell
-### Intended upgrades
-* Optimization to generation of vertical moves
-* Optimization to the update of the attacks' maps
 ## Graphics
 This is the interface with the player, through the GUI the player tells which piece he wants to move and where. The module being used for this is pygame
 ### features
 * Marking all legal moves on the board
 * Marking the pieces that threatens the king
 * Marking capture moves
-### Intended upgrades
-* Switching the board image to an image that fits the board better
 ## Installation
 To run the chess game, you'll need Python 3.7 or higher. Follow these steps:
 

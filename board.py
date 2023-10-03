@@ -497,45 +497,22 @@ class Board:
 
         return self.get_moves_by_piece(cell, is_white, piece, for_attacks)
 
-    def __update_attacker__(self, is_white: bool, piece=PieceType.EMPTY, new_cell=0) -> None:
+    def __update_attacker__(self, is_white: bool) -> None:
         """ This is a method to update the attacker's bitmaps and is for internal use only.
 
         :param is_white: The color which we update
         :param piece: Optional param, used for optimization where we update impacted maps, currently not in use.
-        :param new_cell: Optional param, required for the optimization above.
         """
 
         piece_dict = self.get_pieces_dict(is_white)
         index = 0 if is_white else 1
         self.attackers[index] = 0
 
-        if piece == PieceType.EMPTY:
-            # Update all maps.
-            for piece in piece_dict.keys():
-                self.attackers_maps[piece][index] = 0
-                for cell in piece_dict[piece]:
-                    self.attackers_maps[piece][index] |= self.get_moves_by_piece(cell, is_white, piece, True)
-        else:
-            # FIXME: Optimization to update only maps affected by move,
-            #  not working due to inconsideration of opponent maps which affect legality of the state.
+        # Update all maps.
+        for piece in piece_dict.keys():
             self.attackers_maps[piece][index] = 0
             for cell in piece_dict[piece]:
                 self.attackers_maps[piece][index] |= self.get_moves_by_piece(cell, is_white, piece, True)
-            if self.attackers_maps[PieceType.QUEEN][index] & new_cell != 0:
-                self.attackers_maps[PieceType.QUEEN][index] = 0
-                for cell in piece_dict[PieceType.QUEEN]:
-                    self.attackers_maps[PieceType.QUEEN][index] |= self.get_moves_by_piece(cell, is_white,
-                                                                                           PieceType.QUEEN)
-            if self.attackers_maps[PieceType.BISHOP][index] & new_cell != 0:
-                self.attackers_maps[PieceType.BISHOP][index] = 0
-                for cell in piece_dict[PieceType.BISHOP]:
-                    self.attackers_maps[PieceType.BISHOP][index] |= self.get_moves_by_piece(cell, is_white,
-                                                                                            PieceType.BISHOP)
-            if self.attackers_maps[PieceType.ROOK][index] & new_cell != 0:
-                self.attackers_maps[PieceType.ROOK][index] = 0
-                for cell in piece_dict[PieceType.ROOK]:
-                    self.attackers_maps[PieceType.ROOK][index] |= self.get_moves_by_piece(cell, is_white,
-                                                                                          PieceType.ROOK)
 
         # Update board state
         self.sliding_attacks = 0

@@ -104,7 +104,7 @@ def get_direction(cell: int, target: int) -> int:
 
 
 @lru_cache(maxsize=256)
-def ms1b_value(num : int) -> int:
+def ms1b_value(num: int) -> int:
     """ This returns the most significant bit for a certain 1 byte number
 
     :param num: the number
