@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional
 
 import binary_ops_utils
+from mask_utils import Masks
 from piece import PieceType
 
 default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -19,6 +20,7 @@ class Board:
     knight_moves = []
     king_moves = []
     vertical_distances = []
+    masker = Masks()
     directions = [1, -1, 8, -8, 7, -7, 9, -9]
 
     def __init__(self, fen_string=default_fen) -> None:
@@ -452,34 +454,15 @@ class Board:
         :param for_attacks: Flag that is used when checking if a piece is supported by another piece.
         :return: Bitmap of pseudo-legal moves
         """
-
-        start = 4 if piece == PieceType.BISHOP else 0
-        end = 4 if piece == PieceType.ROOK else 8
         result = 0
-        ray_mark = False
-        enemy_king = self.get_pieces_dict(not is_white)[PieceType.KING][0]
-        for i in range(start, end):
-            direction = self.directions[i]
-            for j in range(self.vertical_distances[cell][i]):
-                target = direction * (j + 1) + cell
-
-                # Move until encounter a piece on the direction ray.
-                if self.is_cell_colored(target, is_white):
-                    if for_attacks:
-                        result = binary_ops_utils.switch_cell_bit(result, target, True)
-                    break
-
-                result = binary_ops_utils.switch_cell_bit(result, target, True)
-
-                if ray_mark:
-                    break
-
-                if not self.is_cell_empty(target):
-                    if not for_attacks or enemy_king != target:
-                        break
-                    else:
-                        ray_mark = True
-        return result
+        if piece == PieceType.ROOK:
+            result = binary_ops_utils.get_rook_moves(self.board, cell, self.masker)
+        elif piece == PieceType.BISHOP:
+            result = binary_ops_utils.get_bishop_moves(self.board, cell, self.masker)
+        elif piece == PieceType.QUEEN:
+            result = binary_ops_utils.get_queen_moves(self.board, cell, self.masker)
+        board = self.white_board if is_white else self.black_board
+        return (result ^ (1 << cell)) if for_attacks else result & (~board)
 
     def get_moves_by_piece(self, cell: int, is_white: bool, piece: PieceType, for_attacks=False) -> int:
         """ Returns all pseudo-legal moves from a cell for a certain piece type and color.
@@ -620,6 +603,10 @@ class Board:
                                 self.pin_in_position = True
                                 self.pin_map |= mask
                             else:
+                                tmp = king_cell - offset
+                                if tmp >= 0:
+                                    index = 1 if is_white else 0
+                                    self.attackers[index] |= (1 << tmp)
                                 self.check_map |= mask
                                 self.position_in_double_check = self.position_in_check
                                 self.position_in_check = True
