@@ -9,8 +9,7 @@ ext_modules = [
     ),
     Extension(
         name="binary_ops_utils",
-      
-    sources=["binary_ops_utils.pyx"],
+        sources=["binary_ops_utils.pyx"],
     ),
 ]
 

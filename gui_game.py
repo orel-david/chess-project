@@ -1,4 +1,4 @@
-import Utils
+import core_utils
 import board
 from graphics import GUI
 
@@ -10,7 +10,7 @@ def determine_result(gboard: board.Board, is_white: bool):
     :param is_white: The color of the current player
     :return: 0 if draw, 1 if white won, -1 if black won
     """
-    if Utils.check_stalemate(gboard):
+    if core_utils.check_stalemate(gboard):
         return 0
     else:
         return -1 if is_white else 1
@@ -23,7 +23,7 @@ def game():
     gameboard = board.Board()
     gui = GUI(gameboard.is_white)
     gui.draw_board(gameboard)
-    while not (Utils.is_mate(gameboard, gui.is_white()) or Utils.check_stalemate(gameboard)):
+    while not (core_utils.is_mate(gameboard, gui.is_white()) or core_utils.check_stalemate(gameboard)):
         gui.handle_events(gameboard)
 
     gui.end(determine_result(gameboard, gui.is_white()))

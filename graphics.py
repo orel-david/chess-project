@@ -3,9 +3,9 @@ from typing import Optional, Sequence
 
 import pygame
 
-import Utils
+import core_utils
 import binary_ops_utils
-from Utils import Move
+from core_utils import Move
 from board import Board
 from chess_exceptions import NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal
 from piece import PieceType
@@ -103,7 +103,7 @@ class GUI:
                 for cell in pieces_dict[piece]:
                     self.draw_at_cell(self.pieces[color][piece], cell)
 
-        self.threats = Utils.get_threats(board)
+        self.threats = core_utils.get_threats(board)
         for threat in self.threats:
             self.mark_check(threat)
         pygame.display.update()
@@ -158,7 +158,7 @@ class GUI:
                             self.draw_board(board)
                             self.origin = -1
                             self.move = None
-                            self.threats = Utils.get_threats(board)
+                            self.threats = core_utils.get_threats(board)
                             for threat in self.threats:
                                 self.mark_check(threat)
                             return
@@ -244,7 +244,7 @@ class GUI:
             return
 
         origin_type = board.get_cell_type(self.origin)
-        self.moves = Utils.get_all_legal_moves(board, self.origin, origin_type, self.is_white())
+        self.moves = core_utils.get_all_legal_moves(board, self.origin, origin_type, self.is_white())
         for move in self.moves:
             self.draw_move(board, move)
 
@@ -336,7 +336,7 @@ class GUI:
         """
         That method returns all castling moves for the player playing.
         """
-        return Utils.get_castle_moves(board, self.is_white())
+        return core_utils.get_castle_moves(board, self.is_white())
 
     def make_move(self, board: Board, user_input: Move):
         """
@@ -344,7 +344,7 @@ class GUI:
         """
         try:
 
-            Utils.make_move(board, user_input)
+            core_utils.make_move(board, user_input)
             self.white = not self.white
 
         except NonLegal:

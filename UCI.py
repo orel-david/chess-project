@@ -1,5 +1,5 @@
 import binary_ops_utils
-from Utils import Move
+from core_utils import Move
 from piece import PieceType
 
 pieces_dict = {PieceType.QUEEN: 'q', PieceType.ROOK: 'r', PieceType.BISHOP: 'b', PieceType.KNIGHT: 'n',
