@@ -2,7 +2,7 @@
 
 from typing import Tuple, List
 
-from mask_utils import Masks
+from mask_utils cimport Masks
 from cython cimport int, tuple, long
 
 cdef unsigned long long base
@@ -174,7 +174,7 @@ cdef unsigned long long outer_cell_file(unsigned long long cell):
     return (0x0100000000000001 << (cell & 7)) & (~(base << cell))
 
 
-cpdef unsigned long long get_bishop_moves(unsigned long long board, unsigned long bishop_cell,  masker):
+cpdef unsigned long long get_bishop_moves(unsigned long long board, unsigned long bishop_cell, Masks masker):
     """ This method is using SBAMG algorithm to generate the bishop's moves
 
     :param board: bitboard of the current gameboard
@@ -206,7 +206,7 @@ cpdef unsigned long long get_bishop_moves(unsigned long long board, unsigned lon
     return result
 
 
-cpdef unsigned long long get_rook_moves(unsigned long long board, unsigned long rook_cell,  masker):
+cpdef unsigned long long get_rook_moves(unsigned long long board, unsigned long rook_cell, Masks masker):
     """ This method is using SBAMG algorithm to generate the rook's moves
 
     :param board: bitboard of the current gameboard
@@ -237,7 +237,7 @@ cpdef unsigned long long get_rook_moves(unsigned long long board, unsigned long 
     return result
 
 
-cpdef unsigned long long get_queen_moves(unsigned long long board, unsigned long queen_cell,  masker):
+cpdef unsigned long long get_queen_moves(unsigned long long board, unsigned long queen_cell, Masks masker):
     """ This method is using SBAMG algorithm to generate the queen's moves
 
     :param board: bitboard of the current gameboard

@@ -10,10 +10,6 @@ cdef class Masks:
     This class holds the masks for the lines on the board for move generation
 
     """
-    cdef unsigned long long[8] rank_masks
-    cdef unsigned long long[8] files_masks
-    cdef unsigned long long[15] diagonal_masks
-    cdef unsigned long long[15] anti_diagonal_masks
 
     def __cinit__(self):
         cdef unsigned long long first_file, first_rank, tmp_anti_diagonal, tmp_diagonal, i, j
@@ -45,7 +41,7 @@ cdef class Masks:
             self.diagonal_masks[7+i] = (tmp_diagonal)
             self.anti_diagonal_masks[7+i] = (tmp_anti_diagonal)
 
-    cpdef unsigned long long get_rank_mask(self, int rank):
+    cdef unsigned long long get_rank_mask(self, int rank):
         """ This returns the mask of a certain rank
 
         :param rank: the rank on the board
@@ -53,7 +49,7 @@ cdef class Masks:
         """
         return self.rank_masks[rank]
 
-    cpdef unsigned long long get_file_mask(self, int file):
+    cdef unsigned long long get_file_mask(self, int file):
         """ This returns the mask of a certain file
 
         :param file: the file on the board
@@ -61,7 +57,7 @@ cdef class Masks:
         """
         return self.files_masks[file]
 
-    cpdef unsigned long long get_diagonal_mask(self, int rank, int file, bint is_anti_diagonal):
+    cdef unsigned long long get_diagonal_mask(self, int rank, int file, bint is_anti_diagonal):
         """ This returns the mask for a certain diagonal line for a certain cell
 
         :param rank: the rank of the cell
