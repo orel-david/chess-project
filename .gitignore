@@ -4,3 +4,4 @@
 *.json
 *.obj
 *.pyd
+board.c
