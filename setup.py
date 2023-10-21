@@ -11,6 +11,14 @@ ext_modules = [
         name="binary_ops_utils",
         sources=["binary_ops_utils.pyx"],
     ),
+    Extension(
+        name="piece",
+        sources=["piece.pyx"],
+    ),
+    Extension(
+        name="board",
+        sources=["board.pyx"],
+    ),
 ]
 
 setup(

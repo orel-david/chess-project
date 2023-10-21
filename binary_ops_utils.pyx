@@ -1,5 +1,4 @@
 #cython: language_level=3
-
 from typing import Tuple, List
 
 from mask_utils cimport Masks
@@ -66,7 +65,7 @@ cpdef tuple[unsigned long,unsigned long] translate_cell_to_row_col(unsigned long
     return (<int>(cell / 8), cell % 8)
 
 
-def get_turned_bits(word):
+cpdef list get_turned_bits(word):
     """ This method gets a byte word as an int and returns the bits that are on.
 
     :param word: The integer we inspect
@@ -174,7 +173,7 @@ cdef unsigned long long outer_cell_file(unsigned long long cell):
     return (0x0100000000000001 << (cell & 7)) & (~(base << cell))
 
 
-cpdef unsigned long long get_bishop_moves(unsigned long long board, unsigned long bishop_cell, Masks masker):
+cdef unsigned long long get_bishop_moves(unsigned long long board, unsigned long bishop_cell, Masks masker):
     """ This method is using SBAMG algorithm to generate the bishop's moves
 
     :param board: bitboard of the current gameboard
@@ -206,7 +205,7 @@ cpdef unsigned long long get_bishop_moves(unsigned long long board, unsigned lon
     return result
 
 
-cpdef unsigned long long get_rook_moves(unsigned long long board, unsigned long rook_cell, Masks masker):
+cdef unsigned long long get_rook_moves(unsigned long long board, unsigned long rook_cell, Masks masker):
     """ This method is using SBAMG algorithm to generate the rook's moves
 
     :param board: bitboard of the current gameboard
@@ -237,7 +236,7 @@ cpdef unsigned long long get_rook_moves(unsigned long long board, unsigned long 
     return result
 
 
-cpdef unsigned long long get_queen_moves(unsigned long long board, unsigned long queen_cell, Masks masker):
+cdef unsigned long long get_queen_moves(unsigned long long board, unsigned long queen_cell, Masks masker):
     """ This method is using SBAMG algorithm to generate the queen's moves
 
     :param board: bitboard of the current gameboard
