@@ -1,3 +1,5 @@
+# cython: language_level=3
+# cython: profile=True
 from typing import List
 
 cimport binary_ops_utils

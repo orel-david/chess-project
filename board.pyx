@@ -1,4 +1,5 @@
-#cython: language_level=3
+# cython: language_level=3
+# cython: profile=True
 from typing import Dict, List, Optional
 import builtins
 
