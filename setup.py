@@ -19,6 +19,10 @@ ext_modules = [
         name="board",
         sources=["board.pyx"],
     ),
+    Extension(
+        name="core_utils",
+        sources=["core_utils.pyx"],
+    ),
 ]
 
 setup(

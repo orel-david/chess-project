@@ -7,7 +7,7 @@ from cython cimport int, tuple, long
 cdef unsigned long long base
 base = 1
 
-cpdef unsigned long long switch_bit(unsigned long long source, unsigned long long row, unsigned long long col, bint on):
+cdef unsigned long long switch_bit(unsigned long long source, unsigned long long row, unsigned long long col, bint on):
     """
     Turn on or off 1 bit in the cell coordinates.
 
@@ -25,7 +25,7 @@ cpdef unsigned long long switch_bit(unsigned long long source, unsigned long lon
     return source & (~(base << (cell)))
 
 
-cpdef unsigned long long switch_cell_bit(unsigned long long source, unsigned long cell, bint on):
+cdef unsigned long long switch_cell_bit(unsigned long long source, unsigned long cell, bint on):
     """ Turn on or off 1 bit in the cell index.
 
     :param source: The original bit sequence
@@ -65,7 +65,7 @@ cpdef tuple[unsigned long,unsigned long] translate_cell_to_row_col(unsigned long
     return (<int>(cell / 8), cell % 8)
 
 
-cpdef list get_turned_bits(word):
+cdef list get_turned_bits(word):
     """ This method gets a byte word as an int and returns the bits that are on.
 
     :param word: The integer we inspect
@@ -83,14 +83,14 @@ cpdef list get_turned_bits(word):
     return result
 
 
-cpdef unsigned long get_direction(unsigned long cell, unsigned long target):
+cdef long get_direction(unsigned long cell, unsigned long target):
     """ This method return the direction between two cell, if they aren't in a line it returns 0.
 
     :param cell: The first cell
     :param target: The second cell
     :return: A direction value according to the directions in board or 0 if not on a line.
     """
-    cdef unsigned long target_col, target_row, cell_col, cell_row , row_diff, col_diff
+    cdef long target_col, target_row, cell_col, cell_row , row_diff, col_diff
 
     target_row, target_col = translate_cell_to_row_col(target)
     cell_row, cell_col = translate_cell_to_row_col(cell)
