@@ -15,7 +15,7 @@ def count_nodes(gboard: Board, depth: int) -> int:
 
     piece_dict = gboard.get_pieces_dict(gboard.is_white)
     moves = []
-    for piece in piece_dict.keys():
+    for piece in gboard.pieces_dict.values():
         for cell in piece_dict[piece]:
             moves += core_utils.get_all_legal_moves(gboard, cell, piece, gboard.is_white)
 

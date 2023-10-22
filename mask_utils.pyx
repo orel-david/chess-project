@@ -1,5 +1,4 @@
 # cython: language_level=3
-# cython: profile=True
 from cython cimport int, long
 
 cdef unsigned long long base

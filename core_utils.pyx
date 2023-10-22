@@ -1,5 +1,4 @@
 # cython: language_level=3
-# cython: profile=True
 from typing import List
 
 cimport binary_ops_utils
@@ -134,7 +133,7 @@ cpdef bint condition(Board board, Move move, PieceType piece, bint is_white):
         return False
 
     cell = move.cell
-    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
+    king_cell = board.get_pieces_dict(is_white)[<int>PieceType.KING][0]
     step = binary_ops_utils.get_direction(move.target, king_cell)
 
     if board.position_in_check:
@@ -187,17 +186,17 @@ cpdef bint is_mate(Board board, bint is_white):
     :param is_white: Is the current player the white player
     :return: True if it is a mate for the opponent
     """
-    cdef dict pieces_dict
+    cdef list[6] pieces_dict
     cdef unsigned long king_cell, cell
     cdef PieceType piece
 
     pieces_dict = board.get_pieces_dict(is_white)
-    king_cell = pieces_dict[PieceType.KING][0]
+    king_cell = pieces_dict[<int>PieceType.KING][0]
     if board.position_in_check:
         if not get_all_legal_moves(board, king_cell, PieceType.KING, is_white):
             if board.position_in_double_check:
                 return True
-            for piece in pieces_dict.keys():
+            for piece in board.pieces_dict.values():
                 for cell in pieces_dict[piece]:
                     if get_all_legal_moves(board, cell, piece, is_white):
                         return False
@@ -266,7 +265,7 @@ cpdef void castle(Board board, bint is_white, Move move, bint valid=False):
     row = 1 if is_white else 8
     col = 8 if move.is_king_side else 1
     side = -1 if move.is_king_side else 1
-    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
+    king_cell = board.get_pieces_dict(is_white)[<int>PieceType.KING][0]
     rook_cell = binary_ops_utils.translate_row_col_to_cell(row, col)
 
     board.remove_cell_piece(king_cell, PieceType.KING, is_white)
@@ -378,7 +377,7 @@ cpdef list get_castle_moves(Board board, bint is_white):
 
     moves = []
     row = 1 if is_white else 8
-    king_cell = board.get_pieces_dict(is_white)[PieceType.KING][0]
+    king_cell = board.get_pieces_dict(is_white)[<int>PieceType.KING][0]
     move_1 = Move(king_cell, binary_ops_utils.translate_row_col_to_cell(row, 7))
     move_1.set_castle(True)
     if can_castle(board, is_white, move_1):

@@ -99,7 +99,7 @@ class GUI:
 
         for color in self.pieces.keys():
             pieces_dict = board.get_pieces_dict(color)
-            for piece in pieces_dict.keys():
+            for piece in board.pieces_dict.values():
                 for cell in pieces_dict[piece]:
                     self.draw_at_cell(self.pieces[color][piece], cell)
 

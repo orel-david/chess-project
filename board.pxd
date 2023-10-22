@@ -8,7 +8,7 @@ cdef class Board:
 
     """
     # static attributes
-    cdef dict pieces_dict
+    cdef public dict pieces_dict
     cdef list pawn_moves
     cdef list knight_moves
     cdef list king_moves
@@ -28,15 +28,15 @@ cdef class Board:
     cdef unsigned long long sliding_attacks
     cdef public unsigned long long[2] attackers
     cdef public bint pin_in_position
-    cdef public dict attackers_maps
+    cdef public unsigned long long[6][2] attackers_maps
     cdef public unsigned long long pin_map
     cdef public unsigned long long check_map
     cdef public bint position_in_check
     cdef public bint position_in_double_check
-    cdef dict piece_maps
+    cdef unsigned long long[6] piece_maps
     cdef public list threats
-    cdef dict black_pieces
-    cdef dict white_pieces
+    cdef list[6] black_pieces
+    cdef list[6] white_pieces
 
     # class methods
     cpdef unsigned long long get_board(self)
@@ -44,7 +44,7 @@ cdef class Board:
     cpdef bint is_cell_colored(self, unsigned long cell, bint is_white)
     cpdef void set_cell_piece(self, unsigned long cell, PieceType piece, bint is_white)
     cpdef void remove_cell_piece(self, unsigned long cell, PieceType piece, bint is_white)
-    cpdef dict get_pieces_dict(self, bint is_white)
+    cpdef list get_pieces_dict(self, bint is_white)
     cpdef bint is_insufficient(self)
     cpdef bint is_type_of(self, unsigned long cell, PieceType piece)
     cpdef PieceType get_cell_type(self, unsigned long cell)

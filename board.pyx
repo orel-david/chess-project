@@ -1,5 +1,4 @@
 # cython: language_level=3
-# cython: profile=True
 from typing import Dict, List, Optional
 import builtins
 
@@ -45,27 +44,22 @@ cdef class Board:
         self.sliding_attacks = 0
         self.attackers = [0, 0]
         self.pin_in_position = False
-        self.attackers_maps = {PieceType.PAWN: [0, 0], PieceType.QUEEN: [0, 0], PieceType.BISHOP: [0, 0],
-                               PieceType.KNIGHT: [0, 0],
-                               PieceType.KING: [0, 0], PieceType.ROOK: [0, 0]}
+        self.attackers_maps = [[0, 0],  [0, 0], [0, 0], [0, 0], [0, 0],  [0, 0]]
         self.pin_map = 0
         self.check_map = 0
         self.position_in_check = False
         self.position_in_double_check = False
-        self.piece_maps = {PieceType.PAWN: 0, PieceType.QUEEN: 0, PieceType.BISHOP: 0, PieceType.KNIGHT: 0,
-                           PieceType.KING: 0, PieceType.ROOK: 0}
+        self.piece_maps = [0, 0, 0, 0, 0, 0]
         self.threats = []
-        self.black_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
-                             PieceType.KING: [], PieceType.ROOK: []}
-        self.white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
-                             PieceType.KING: [], PieceType.ROOK: []}
+        self.black_pieces = [[], [], [], [], [], []]
+        self.white_pieces = [[], [], [], [], [], []]
         self.__update_distances__()
         self.__update_pawn_moves__()
         self.__update_knight_moves__()
         self.__update_king_moves__()
         self.import_from_fen(fen_string)
-        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
-            PieceType.ROOK]
+        self.sliding = self.piece_maps[<int>PieceType.QUEEN] | self.piece_maps[<int>PieceType.BISHOP] | self.piece_maps[
+            <int>PieceType.ROOK]
         self.__update_attacker__(True)
         self.__update_attacker__(False)
         self.__update_pins_and_checks__(self.is_white)
@@ -76,10 +70,8 @@ cdef class Board:
         :param fen_string: The notation that represent the state of the game with piece locations and castling options.
         """
 
-        self.black_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
-                             PieceType.KING: [], PieceType.ROOK: []}
-        self.white_pieces = {PieceType.PAWN: [], PieceType.QUEEN: [], PieceType.BISHOP: [], PieceType.KNIGHT: [],
-                             PieceType.KING: [], PieceType.ROOK: []}
+        self.black_pieces = [[], [], [], [], [], []]
+        self.white_pieces = [[], [], [], [], [], []]
         parts = fen_string.split()
 
         # In this part there is a description of the pieces in each row from the eighth rank to the first.
@@ -105,7 +97,7 @@ cdef class Board:
                 if letter.isdigit():
                     j += builtins.int(letter)
                 else:
-                    piece_type = self.pieces_dict[letter.lower()]
+                    piece_type = <int>self.pieces_dict[letter.lower()]
                     self.piece_maps[piece_type] = binary_ops_utils.switch_bit(self.piece_maps[piece_type], i, j, True)
 
                     if letter.islower():
@@ -156,12 +148,12 @@ cdef class Board:
         """
 
         self.board = binary_ops_utils.switch_cell_bit(self.board, cell, True)
-        self.piece_maps[piece] = binary_ops_utils.switch_cell_bit(self.piece_maps[piece], cell, True)
+        self.piece_maps[<int>piece] = binary_ops_utils.switch_cell_bit(self.piece_maps[<int>piece], cell, True)
         if is_white:
-            self.white_pieces[piece].append(cell)
+            self.white_pieces[<int>piece].append(cell)
             self.white_board = binary_ops_utils.switch_cell_bit(self.white_board, cell, True)
         else:
-            self.black_pieces[piece].append(cell)
+            self.black_pieces[<int>piece].append(cell)
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, True)
 
     cpdef void remove_cell_piece(self, unsigned long cell, PieceType piece, bint is_white):
@@ -173,15 +165,15 @@ cdef class Board:
         """
 
         self.board = binary_ops_utils.switch_cell_bit(self.board, cell, False)
-        self.piece_maps[piece] = binary_ops_utils.switch_cell_bit(self.piece_maps[piece], cell, False)
+        self.piece_maps[<int>piece] = binary_ops_utils.switch_cell_bit(self.piece_maps[<int>piece], cell, False)
         if is_white:
-            self.white_pieces[piece] = [c for c in self.white_pieces[piece] if c != cell]
+            self.white_pieces[<int>piece] = [c for c in self.white_pieces[<int>piece] if c != cell]
             self.white_board = binary_ops_utils.switch_cell_bit(self.white_board, cell, False)
         else:
-            self.black_pieces[piece] = [c for c in self.black_pieces[piece] if c != cell]
+            self.black_pieces[<int>piece] = [c for c in self.black_pieces[<int>piece] if c != cell]
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, False)
 
-    cpdef dict get_pieces_dict(self, bint is_white):
+    cpdef list get_pieces_dict(self, bint is_white):
         """ This function returns the dictionary of the cells in which certain piece type is found.
 
         :param is_white: If we want the dict for the white pieces or not
@@ -196,11 +188,11 @@ cdef class Board:
         :return: True if the board state is insufficient for a mate, False otherwise.
         """
 
-        if self.white_pieces[PieceType.PAWN] == [] and self.black_pieces[PieceType.PAWN] == []:
-            if len(self.white_pieces[PieceType.ROOK] + self.white_pieces[PieceType.QUEEN]) == 0 and len(
-                    self.white_pieces[PieceType.BISHOP] + self.white_pieces[PieceType.KNIGHT]) <= 1:
-                return len(self.black_pieces[PieceType.ROOK] + self.black_pieces[PieceType.QUEEN]) == 0 and len(
-                    self.black_pieces[PieceType.BISHOP] + self.black_pieces[PieceType.KNIGHT]) <= 1
+        if self.white_pieces[<int>PieceType.PAWN] == [] and self.black_pieces[<int>PieceType.PAWN] == []:
+            if len(self.white_pieces[<int>PieceType.ROOK] + self.white_pieces[<int>PieceType.QUEEN]) == 0 and len(
+                    self.white_pieces[<int>PieceType.BISHOP] + self.white_pieces[<int>PieceType.KNIGHT]) <= 1:
+                return len(self.black_pieces[<int>PieceType.ROOK] + self.black_pieces[<int>PieceType.QUEEN]) == 0 and len(
+                    self.black_pieces[<int>PieceType.BISHOP] + self.black_pieces[<int>PieceType.KNIGHT]) <= 1
         return False
 
     cpdef bint is_type_of(self, unsigned long cell, PieceType piece):
@@ -211,7 +203,7 @@ cdef class Board:
         :return: True if the cell PieceType is piece, False otherwise
         """
 
-        return (self.piece_maps[piece] & (base << cell)) != 0
+        return (self.piece_maps[<int>piece] & (base << cell)) != 0
 
     cpdef PieceType get_cell_type(self, unsigned long cell):
         """ Returns The PieceType of certain cell
@@ -225,16 +217,16 @@ cdef class Board:
 
         # I created a bit map for the sliding pieces as optimization for the search.
         if (self.sliding & (base << cell)) != 0:
-            if (self.piece_maps[PieceType.ROOK] & (base << cell)) != 0:
+            if (self.piece_maps[<int>PieceType.ROOK] & (base << cell)) != 0:
                 return PieceType.ROOK
-            elif (self.piece_maps[PieceType.BISHOP] & (base << cell)) != 0:
+            elif (self.piece_maps[<int>PieceType.BISHOP] & (base << cell)) != 0:
                 return PieceType.BISHOP
             else:
                 return PieceType.QUEEN
         else:
-            if (self.piece_maps[PieceType.PAWN] & (base << cell)) != 0:
+            if (self.piece_maps[<int>PieceType.PAWN] & (base << cell)) != 0:
                 return PieceType.PAWN
-            elif (self.piece_maps[PieceType.KING] & (base << cell)) != 0:
+            elif (self.piece_maps[<int>PieceType.KING] & (base << cell)) != 0:
                 return PieceType.KING
             else:
                 return PieceType.KNIGHT
@@ -272,7 +264,7 @@ cdef class Board:
         cdef int direction
         cdef bint threat, block, is_threat
 
-        king_cell = self.get_pieces_dict(is_white)[PieceType.KING][0]
+        king_cell = self.get_pieces_dict(is_white)[<int>PieceType.KING][0]
         king_row, king_col = binary_ops_utils.translate_cell_to_row_col(king_cell)
         pawn_row, pawn_col = binary_ops_utils.translate_cell_to_row_col(pawn_cell)
         if king_col == pawn_col:
@@ -523,32 +515,33 @@ cdef class Board:
         :param is_white: The color which we update
         :param piece: Optional param, used for optimization where we update impacted maps, currently not in use.
         """
-        cdef dict piece_dict
+        cdef list[6] piece_dict
         cdef int index
         cdef unsigned long long temp
+        cdef PieceType piece
 
         piece_dict = self.get_pieces_dict(is_white)
         index = 0 if is_white else 1
         self.attackers[index] = 0
 
         # Update all maps.
-        for piece in piece_dict.keys():
+        for piece in self.pieces_dict.values():
             temp = 0            
-            for cell in piece_dict[piece]:
+            for cell in piece_dict[<int>piece]:
                 temp |= self.get_moves_by_piece(cell, is_white, piece, True)
-            self.attackers_maps[piece][index] = temp
+            self.attackers_maps[<int>piece][index] = temp
 
 
         # Update board state
         temp = 0
-        temp |= self.attackers_maps[PieceType.QUEEN][index]
-        temp |= self.attackers_maps[PieceType.ROOK][index]
-        temp |= self.attackers_maps[PieceType.BISHOP][index]
+        temp |= self.attackers_maps[<int>PieceType.QUEEN][index]
+        temp |= self.attackers_maps[<int>PieceType.ROOK][index]
+        temp |= self.attackers_maps[<int>PieceType.BISHOP][index]
         self.sliding_attacks = temp
 
         temp = 0
-        temp = self.attackers_maps[PieceType.PAWN][index] | self.attackers_maps[PieceType.KING][index]
-        temp |= self.attackers_maps[PieceType.KNIGHT][index]
+        temp = self.attackers_maps[<int>PieceType.PAWN][index] | self.attackers_maps[<int>PieceType.KING][index]
+        temp |= self.attackers_maps[<int>PieceType.KNIGHT][index]
         self.attackers[index] = self.sliding_attacks | temp
 
     cpdef unsigned long long get_attacks(self, bint is_white):
@@ -564,7 +557,7 @@ cdef class Board:
 
         :param is_white: The king's color
         """
-        cdef dict pieces_dict, enemy_dict
+        cdef list[6] pieces_dict, enemy_dict
         cdef unsigned long king_cell, destination, tmp, cell
         cdef int index, start, end, direction_index, offset, num, i, pawn_advancement, king_row, pawn_row
         cdef unsigned long long mask
@@ -572,7 +565,7 @@ cdef class Board:
 
         pieces_dict = self.get_pieces_dict(is_white)
         enemy_dict = self.get_pieces_dict(not is_white)
-        king_cell = pieces_dict[PieceType.KING][0]
+        king_cell = pieces_dict[<int>PieceType.KING][0]
         index = 1 if is_white else 0
         self.pin_map = 0
         self.pin_in_position = False
@@ -582,9 +575,9 @@ cdef class Board:
         self.threats = []
         start = 0
         end = 8
-        if len(enemy_dict[PieceType.QUEEN]) == 0:
-            start = 0 if len(enemy_dict[PieceType.ROOK]) != 0 else 4
-            end = 8 if len(enemy_dict[PieceType.BISHOP]) != 0 else 4
+        if len(enemy_dict[<int>PieceType.QUEEN]) == 0:
+            start = 0 if len(enemy_dict[<int>PieceType.ROOK]) != 0 else 4
+            end = 8 if len(enemy_dict[<int>PieceType.BISHOP]) != 0 else 4
 
         # Check threats from sliding pieces in each direction.
         for direction_index in range(start, end):
@@ -624,7 +617,7 @@ cdef class Board:
                         break
 
         # Check attacks from enemy knights.
-        for cell in enemy_dict[PieceType.KNIGHT]:
+        for cell in enemy_dict[<int>PieceType.KNIGHT]:
             if self.knight_moves[cell] & (base << king_cell) != 0:
                 self.check_map = binary_ops_utils.switch_cell_bit(self.check_map, cell, True)
                 self.position_in_double_check = self.position_in_check
@@ -635,9 +628,9 @@ cdef class Board:
         king_row = <int>(king_cell / 8)
         # We check the enemies pawns.
         pawn_advancement = -1 if is_white else 1
-        if (base << king_cell) & self.attackers_maps[PieceType.PAWN][index] == 0:
+        if (base << king_cell) & self.attackers_maps[<int>PieceType.PAWN][index] == 0:
             return
-        for cell in enemy_dict[PieceType.PAWN]:
+        for cell in enemy_dict[<int>PieceType.PAWN]:
             pawn_row = <int>(cell / 8)
             if pawn_row + pawn_advancement != king_row:
                 continue
@@ -669,8 +662,8 @@ cdef class Board:
         """
 
         self.en_passant_ready = target_cell if enables_en_passant else 0
-        self.sliding = self.piece_maps[PieceType.QUEEN] | self.piece_maps[PieceType.BISHOP] | self.piece_maps[
-            PieceType.ROOK]
+        self.sliding = self.piece_maps[<int>PieceType.QUEEN] | self.piece_maps[<int>PieceType.BISHOP] | self.piece_maps[
+            <int>PieceType.ROOK]
         self.__update_attacker__(True)
         self.__update_attacker__(False)
         self.is_white = not self.is_white

@@ -1,9 +1,9 @@
 cpdef enum PieceType:
-    EMPTY = 0
-    PAWN = 1
-    KNIGHT = 2
-    BISHOP = 3
-    ROOK = 5
-    QUEEN = 9
-    KING = 100
+    PAWN = 0
+    QUEEN = 1
+    BISHOP = 2
+    KNIGHT = 3
+    ROOK = 4
+    KING = 5
+    EMPTY = 6
 
