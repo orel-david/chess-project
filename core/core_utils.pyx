@@ -3,7 +3,7 @@ from typing import List
 
 cimport binary_ops_utils
 from board cimport Board
-from chess_exceptions import NonLegal, KingUnderCheck
+from .chess_exceptions import NonLegal, KingUnderCheck
 from piece cimport PieceType
 
 cdef unsigned long long base

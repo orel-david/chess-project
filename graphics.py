@@ -3,12 +3,8 @@ from typing import Optional, Sequence
 
 import pygame
 
-import core_utils
-import binary_ops_utils
-from core_utils import Move
-from board import Board
-from chess_exceptions import NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal
-from piece import PieceType
+import core
+from core import PieceType, NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal, Board, Move
 
 
 def create_image_dict(is_white: bool, width: int, height: int):
@@ -82,7 +78,7 @@ class GUI:
         :param cell: The cell index
         """
 
-        row, col = binary_ops_utils.translate_cell_to_row_col(cell)
+        row, col = core.translate_cell_to_row_col(cell)
         row += 1
         col += 1
         if row > 8 or col > 8 or row < 1 or col < 1:
@@ -103,7 +99,7 @@ class GUI:
                 for cell in pieces_dict[piece]:
                     self.draw_at_cell(self.pieces[color][piece], cell)
 
-        self.threats = core_utils.get_threats(board)
+        self.threats = core.core_utils.get_threats(board)
         for threat in self.threats:
             self.mark_check(threat)
         pygame.display.update()
@@ -131,7 +127,7 @@ class GUI:
 
                     if self.origin != -1:
                         # If there is already an origin cell this is an attempt to perform a move.
-                        cell = binary_ops_utils.translate_row_col_to_cell(row, col)
+                        cell = core.translate_row_col_to_cell(row, col)
 
                         # If there was a promotion move now the user choose the promotion piece.
                         if self.promotion_case:
@@ -158,7 +154,7 @@ class GUI:
                             self.draw_board(board)
                             self.origin = -1
                             self.move = None
-                            self.threats = core_utils.get_threats(board)
+                            self.threats = core.core_utils.get_threats(board)
                             for threat in self.threats:
                                 self.mark_check(threat)
                             return
@@ -171,7 +167,7 @@ class GUI:
                         if origin_type == PieceType.KING:
                             castling_moves = self.get_castle_moves(board)
                             for castle in castling_moves:
-                                if castle.target == binary_ops_utils.translate_row_col_to_cell(row, col):
+                                if castle.target == core.translate_row_col_to_cell(row, col):
                                     self.make_move(board, castle)
                                     self.draw_board(board)
                                     self.origin = -1
@@ -218,13 +214,13 @@ class GUI:
         row = 8 if color else 1
         direction = 1 if color else -1
         col += 1
-        self.draw_at_cell(self.pieces[color][PieceType.QUEEN], binary_ops_utils.translate_row_col_to_cell(row, col))
+        self.draw_at_cell(self.pieces[color][PieceType.QUEEN], core.translate_row_col_to_cell(row, col))
         self.draw_at_cell(self.pieces[color][PieceType.KNIGHT],
-                          binary_ops_utils.translate_row_col_to_cell(row - direction, col))
+                          core.translate_row_col_to_cell(row - direction, col))
         self.draw_at_cell(self.pieces[color][PieceType.ROOK],
-                          binary_ops_utils.translate_row_col_to_cell(row - 2 * direction, col))
+                          core.translate_row_col_to_cell(row - 2 * direction, col))
         self.draw_at_cell(self.pieces[color][PieceType.BISHOP],
-                          binary_ops_utils.translate_row_col_to_cell(row - 3 * direction, col))
+                          core.translate_row_col_to_cell(row - 3 * direction, col))
 
         pygame.display.update()
 
@@ -236,7 +232,7 @@ class GUI:
         :param col: The new origin column
         """
         self.promotion_case = False
-        self.origin = binary_ops_utils.translate_row_col_to_cell(row, col)
+        self.origin = core.translate_row_col_to_cell(row, col)
         self.draw_board(board)
 
         if not board.is_cell_colored(self.origin, self.is_white()):
@@ -244,7 +240,7 @@ class GUI:
             return
 
         origin_type = board.get_cell_type(self.origin)
-        self.moves = core_utils.get_all_legal_moves(board, self.origin, origin_type, self.is_white())
+        self.moves = core.core_utils.get_all_legal_moves(board, self.origin, origin_type, self.is_white())
         for move in self.moves:
             self.draw_move(board, move)
 
@@ -257,7 +253,7 @@ class GUI:
         :param promote: Flag to tell whether this is a promotion move
         """
 
-        target = binary_ops_utils.translate_row_col_to_cell(row, col)
+        target = core.translate_row_col_to_cell(row, col)
         self.move = Move(self.origin, target)
         if not self.is_in_moves(self.move):
             self.move = None
@@ -284,7 +280,7 @@ class GUI:
         if move.target & 0x40 != 0:
             return
 
-        row, col = binary_ops_utils.translate_cell_to_row_col(move.target)
+        row, col = core.translate_cell_to_row_col(move.target)
         row += 1
         col += 1
         rectangle = pygame.Rect((col - 1) * (self.width / 8), (8 - row) * (self.height / 8),
@@ -302,7 +298,7 @@ class GUI:
         :param cell: The cell of the threatening piece
         """
 
-        row, col = binary_ops_utils.translate_cell_to_row_col(cell)
+        row, col = core.translate_cell_to_row_col(cell)
         row += 1
         col += 1
         rectangle = pygame.Rect((col - 1) * (self.width / 8), (8 - row) * (self.height / 8),
@@ -336,7 +332,7 @@ class GUI:
         """
         That method returns all castling moves for the player playing.
         """
-        return core_utils.get_castle_moves(board, self.is_white())
+        return core.core_utils.get_castle_moves(board, self.is_white())
 
     def make_move(self, board: Board, user_input: Move):
         """
@@ -344,7 +340,7 @@ class GUI:
         """
         try:
 
-            core_utils.make_move(board, user_input)
+            core.core_utils.make_move(board, user_input)
             self.white = not self.white
 
         except NonLegal:

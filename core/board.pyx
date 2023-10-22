@@ -4,7 +4,7 @@ import builtins
 
 cimport binary_ops_utils
 from cython cimport int, long
-from mask_utils cimport Masks
+from .mask_utils import Masks
 from piece cimport PieceType
 
 cdef str default_fen

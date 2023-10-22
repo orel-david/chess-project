@@ -1,7 +1,7 @@
 import pytest
 
 import search_utils
-from board import Board
+from core import Board
 
 test_cases = [
     ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", [1, 20, 400, 8902, 197281], 4),
