@@ -1,5 +1,5 @@
-import Utils
-from board import Board
+import core
+from core import Board
 
 
 def count_nodes(gboard: Board, depth: int) -> int:
@@ -15,12 +15,12 @@ def count_nodes(gboard: Board, depth: int) -> int:
 
     piece_dict = gboard.get_pieces_dict(gboard.is_white)
     moves = []
-    for piece in piece_dict.keys():
+    for piece in gboard.pieces_dict.values():
         for cell in piece_dict[piece]:
-            moves += Utils.get_all_legal_moves(gboard, cell, piece, gboard.is_white)
+            moves += core.core_utils.get_all_legal_moves(gboard, cell, piece, gboard.is_white)
 
     for move in moves:
-        Utils.make_move(gboard, move, True)
+        core.core_utils.make_move(gboard, move, True)
         sum_options += count_nodes(gboard, depth - 1)
-        Utils.undo_move(gboard, move)
+        core.core_utils.undo_move(gboard, move)
     return sum_options

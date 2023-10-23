@@ -1,5 +1,4 @@
-import binary_ops_utils
-from Utils import Move
+from core_utils import Move
 from piece import PieceType
 
 pieces_dict = {PieceType.QUEEN: 'q', PieceType.ROOK: 'r', PieceType.BISHOP: 'b', PieceType.KNIGHT: 'n',
@@ -22,5 +21,5 @@ def convert_cell_to_algebraic_notation(cell: int) -> str:
     :param cell: The index of the cell
     :return: The algebraic notation of the cell
     """
-    row, col = binary_ops_utils.translate_cell_to_row_col(cell)
+    row, col =  (int(cell / 8), cell % 8)
     return (chr(col + ord('a'))) + str(row + 1)

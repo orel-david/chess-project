@@ -1,1 +1,7 @@
 *.pyc
+*.exp
+*.lib
+*.json
+*.obj
+board.c
+*.c
