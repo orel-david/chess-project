@@ -4,10 +4,10 @@ Personal project to create a working chess game with graphical interface in pyth
 ## Core module
 The core module groups the functions and classes required for the logics of the game.
 Due to performance reasons the majority of the files in that module are written  with cython.
-The files were compiled using `python setup.py build_ext --inplace` and there is no need to recompile them.
+The files were compiled using `python setup.py build_ext --inplace` and there is no need to recompile them in Windows 10 or Ubuntu.
 ### Core submodules
 Each one of the following submodules is made out of three file.
-The first one is `.pxd` file which serves as a header file, a `.pyx` file which contains the implementation and a `.pyd` which is the compilation's result.
+The first one is `.pxd` file which serves as a header file, a `.pyx` file which contains the implementation and a `.pyd` which is the compilation's result for Windows 10 and Ubuntu.
 * `mask_utils` - This submodule is used to get a bit mask for each rank, file, diagonal and anti-diagonal.
 * `binary_ops_utils` - This submodule contains mainly helper function for bit operations and generating moves for the sliding pieces.
 * `piece` - Holds an enum for all the piece types in the game including empty cell.
