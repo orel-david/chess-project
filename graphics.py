@@ -1,10 +1,11 @@
 import sys
 from typing import Optional, Sequence
-
 import pygame
+import time
 
 import core
 from core import PieceType, NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal, Board, Move
+import search_utils
 
 
 def create_image_dict(is_white: bool, width: int, height: int):
@@ -341,6 +342,13 @@ class GUI:
         try:
 
             core.core_utils.make_move(board, user_input)
+            self.white = not self.white
+            self.draw_board(board)
+            start = time.time()
+            move = search_utils.search_move(board, 4)
+            end = time.time()
+            print(end - start)
+            core.core_utils.make_move(board, move)
             self.white = not self.white
 
         except NonLegal:
