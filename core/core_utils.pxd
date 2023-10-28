@@ -18,6 +18,7 @@ cdef class Move:
     cdef public PieceType promotion
     cdef public PieceType enemy_type
     cdef public unicode prev_castling
+    cdef public int prev_count
 
     # class methods
     cpdef void set_castle(self, bint is_king_side)

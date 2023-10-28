@@ -164,7 +164,10 @@ mg_table = [[0] * 64 for _ in range(12)]
 eg_table = [[0] * 64 for _ in range(12)]
 
 
-def init_tables():
+def init_tables() -> None:
+    """
+    This function initialize the middle and end game tables to evaluate a position.
+    """
     global mg_table
     global eg_table
     for piece in range(6):
@@ -175,10 +178,14 @@ def init_tables():
             eg_table[(piece * 2) + 1][cell] = endgame_value[piece] + eg_pesto_table[piece][cell ^ 56]
     eg_table = tuple(eg_table)
     mg_table = tuple(mg_table)
-    
 
 
 def evaluate(board: Board) -> float:
+    """ This function evaluate a position.
+
+    :param board: The board which hold the position
+    :return: An estimate of how good is the position for the current player.
+    """
     black_pieces = board.get_pieces_dict(False)
     white_pieces = board.get_pieces_dict(True)
     middle_game_eval = [0, 0]
@@ -197,34 +204,54 @@ def evaluate(board: Board) -> float:
 
     index = 1 if board.is_white else 0
     middle_game_score = middle_game_eval[index] - middle_game_eval[1 - index]
-    endgame_score = endgame_eval[index] - endgame_eval[1 - index]
+    endgame_score = endgame_eval[index] - endgame_eval[1 - index] + mopup_eval(board)
     if phase > 24:
         phase = 24
     return (middle_game_score * phase + endgame_score * (24 - phase)) / init_phase
 
 
-def lazy_evaluate(board: Board, move: Move, prev_eval: Tuple[int, int], phase: int) -> Tuple[int, int, int, int]:
-    middle_game_score = prev_eval[0]
-    endgame_score = prev_eval[1]
-    enenmy_type = board.get_cell_type(move.target)
-    addon = 0 if board.is_white else 1
-    enemy_index = enenmy_type * 2 + (1 - addon)
-    
-    middle_game_score -= mg_table[enemy_index][move.target]
-    middle_game_score += mg_table[enemy_index][move.cell]
-    endgame_score -= eg_table[enemy_index][move.target]
-    endgame_score += eg_table[enemy_index][move.cell]
-    
-    if move.enemy_type != PieceType.EMPTY:
-        index = move.enemy_type * 2 + addon
-        middle_game_score -= mg_table[index][move.target]
-        endgame_score -= eg_table[index][move.target]
-        phase -= phase_indicator[move.enemy_type]
+def mopup_eval(board: Board) -> float:
+    """ This function uses mop up evaluation to encourage a more aggressive behaviour at the endgame
 
-    if phase > 24:
-        phase = 24
-    
-    score =  (middle_game_score * phase + endgame_score * (24 - phase)) / init_phase
-    return (score, middle_game_score, endgame_score, phase)
+    :param board: The position which is evaluated
+    :return: Score of how pushed to the corner the over king is
+    """
+    king_cell = board.get_pieces_dict(board.is_white)[PieceType.KING][0]
+    file = king_cell & 7
+    rank = king_cell >> 3
+    enemy_king_cell = board.get_pieces_dict(not board.is_white)[PieceType.KING][0]
+    enemy_file = enemy_king_cell & 7
+    enemy_rank = enemy_king_cell >> 3
+    enemy_file ^= (enemy_file - 4) >> 8
+    enemy_rank ^= (enemy_rank - 4) >> 8
+    cmd = (enemy_file + enemy_rank) & 7
+    md = abs(file - enemy_file) + abs(rank - enemy_rank)
+    return 4.7 * cmd + 1.6 * (14 - md)
 
-print(mg_king_table[12])
+
+def move_prediction(board: Board, move: Move) -> float:
+    """ This method approximate how good is a certain move to maximize the beta cutoffs.
+
+    :param board: The current board
+    :param move: The move which is evaluated
+    :return: The approximation for the move.
+    """
+    val = 0
+    enemy = board.get_cell_type(move.target)
+    piece = board.get_cell_type(move.cell)
+
+    if enemy != PieceType.EMPTY:
+        addon = 0 if board.is_white else 1
+        enemy_addon = 1 - addon
+        index = piece * 2 + addon
+        enemy_index = enemy * 2 + enemy_addon
+        temp = mg_table[index][move.target] - mg_table[enemy_index][move.target]
+        val += temp << 3
+
+    if move.promotion != PieceType.EMPTY:
+        val += middle_game_value[move.promotion]
+
+    if (1 << move.target) & board.get_pawn_attacks(not board.is_white) != 0:
+        val -= middle_game_value[piece]
+
+    return val

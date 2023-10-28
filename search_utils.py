@@ -1,3 +1,4 @@
+import time
 import core
 from core import Board
 import evaluation_utils
@@ -26,7 +27,16 @@ def count_nodes(gboard: Board, depth: int) -> int:
         core.core_utils.undo_move(gboard, move)
     return sum_options
 
-def search_position(board: Board, depth: int, alpha: int, beta:int) -> float:
+
+def search_position(board: Board, depth: int, alpha: int, beta: int) -> float:
+    """ This method uses alpha beta pruning to estimate how well is the position looking to a certain depth.
+
+    :param board: The position
+    :param depth: The depth to which we look
+    :param alpha: The alpha value
+    :param beta: The beta value
+    :return: The estimate of the position
+    """
     if depth <= 0:
         return evaluation_utils.evaluate(board)
     
@@ -35,49 +45,56 @@ def search_position(board: Board, depth: int, alpha: int, beta:int) -> float:
     for piece in board.pieces_dict.values():
         for cell in piece_dict[piece]:
             moves += core.core_utils.get_all_legal_moves(board, cell, piece, board.is_white)
-    
-    if moves == []:
+
+    if not moves:
         if board.position_in_check:
             return float('-inf')
         return 0
-    
+
     score = 0
     for move in moves:
         core.core_utils.make_move(board, move, True)
-        score = -search_position(board, depth - 1, -beta, -alpha)
+        extra = 1 if board.position_in_check else 0
+        score = -search_position(board, depth - 1 + extra, -beta, -alpha)
         core.core_utils.undo_move(board, move)
-        
+
         if score >= beta:
             return beta
-        
-        alpha = max(alpha, score)    
-        
+
+        alpha = max(alpha, score)
+
     return alpha
-        
-def search_move(board : Board, depth: int) -> core.Move:
+
+
+def search_move(board: Board, depth: int) -> core.Move:
+    """ This method returns the best move by searching to a certain depth
+
+    :param board: The position in which we search
+    :param depth: The depth of the search
+    :return: The move which according to the evaluate metric is the best.
+    """
     evaluation_utils.init_tables()
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
-    
+
     for piece in board.pieces_dict.values():
         for cell in piece_dict[piece]:
             moves += core.core_utils.get_all_legal_moves(board, cell, piece, board.is_white)
-            
-    if moves == []:
+
+    if not moves:
         return None
-    
-    bestMove = None
-    bestVal = float("-inf")
-    
+
+    best_move = None
+    best_val = float("-inf")
+    moves.sort(key=lambda move: evaluation_utils.move_prediction(board, move))
+
     for move in moves:
         core.core_utils.make_move(board, move, True)
         val = -search_position(board, depth - 1, float("-inf"), float("inf"))
         core.core_utils.undo_move(board, move)
 
-        if val >= bestVal:
-            bestMove = move
-            bestVal = val
-    
-    return bestMove
-    
-    
+        if val >= best_val:
+            best_move = move
+            best_val = val
+
+    return best_move

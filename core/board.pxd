@@ -58,6 +58,7 @@ cdef class Board:
     cpdef unsigned long long get_moves_by_cell(self, unsigned long cell, bint is_white, bint for_attacks=*)
     cpdef void __update_attacker__(self, bint is_white)
     cpdef unsigned long long get_attacks(self, bint is_white)
+    cpdef unsigned long long get_pawn_attacks(self, bint is_white)
     cpdef void __update_pins_and_checks__(self, bint is_white)
     cpdef bint is_pinned(self, unsigned long cell)
     cpdef void update_round(self, unsigned long target_cell, PieceType piece, bint enables_en_passant=*)

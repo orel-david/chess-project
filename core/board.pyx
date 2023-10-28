@@ -552,6 +552,11 @@ cdef class Board:
         """
         return self.attackers[1] if is_white else self.attackers[0]
 
+
+    cpdef unsigned long long get_pawn_attacks(self, bint is_white):
+        return self.attackers_maps[<int>PieceType.PAWN][1] if is_white else self.attackers_maps[<int>PieceType.PAWN][0]
+
+
     cpdef void __update_pins_and_checks__(self, bint is_white):
         """ This is function for internal use to update the attacks, pin, threats and checks on the king
 

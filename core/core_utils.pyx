@@ -431,6 +431,7 @@ cpdef void fill_undo_info(Board board, Move move, PieceType enemy_type):
     move.prev_castling = board.castling_options
     move.prev_en_passant = board.en_passant_ready
     move.enemy_type = enemy_type
+    move.prev_count = board.count
 
 
 cpdef void update_castling_option(unsigned long rook_cell, Board board, bint is_white):
@@ -501,3 +502,4 @@ cpdef void undo_move(Board board, Move move):
         board.set_cell_piece(move.enemy_cell, move.enemy_type, board.is_white)
     board.update_round(move.enemy_cell, move.enemy_type)
     board.en_passant_ready = move.prev_en_passant
+    board.count = move.prev_count
