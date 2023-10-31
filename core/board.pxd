@@ -35,6 +35,8 @@ cdef class Board:
     cdef public bint position_in_double_check
     cdef unsigned long long[6] piece_maps
     cdef public list threats
+    cdef public unsigned long long zobrist_key
+    cdef public unsigned long long[64][12] zobrist_table
     cdef list[6] black_pieces
     cdef list[6] white_pieces
 
@@ -56,6 +58,7 @@ cdef class Board:
     cpdef unsigned long long get_vertical_cell_moves(self, unsigned long cell, PieceType piece, bint is_white, bint for_attacks=*)
     cpdef unsigned long long get_moves_by_piece(self, unsigned long cell, bint is_white, PieceType piece, bint for_attacks=*)
     cpdef unsigned long long get_moves_by_cell(self, unsigned long cell, bint is_white, bint for_attacks=*)
+    cpdef unsigned long long get_captures_by_cell(self, unsigned long cell, bint is_white)
     cpdef void __update_attacker__(self, bint is_white)
     cpdef unsigned long long get_attacks(self, bint is_white)
     cpdef unsigned long long get_pawn_attacks(self, bint is_white)

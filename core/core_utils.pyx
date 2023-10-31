@@ -110,6 +110,31 @@ cpdef list get_all_legal_moves(Board board, unsigned long cell, PieceType piece,
 
     return moves
 
+cpdef list get_all_legal_captures(Board board, unsigned long cell, PieceType piece, bint is_white):
+    """ Returns all the legal captures from a certain cell with a certain PieceType
+
+    :param board: The board we use
+    :param cell: The cell we check
+    :param piece: The piece type of the cell
+    :param is_white: Whether it is the turn of the white player or not
+    :return: All legal moves in the board position as a list of captures
+    """
+    cdef list moves, targets
+    cdef Move move
+    cdef unsigned long target
+
+    if board.is_cell_empty(cell) or board.is_cell_colored(cell, not is_white):
+        return []
+
+    moves = []
+    targets = binary_ops_utils.get_turned_bits(board.get_captures_by_cell(cell, is_white))
+
+    for target in targets:
+        move = Move(cell, target)
+        if condition(board, move, piece, is_white):
+            moves.append(move)
+
+    return moves
 
 cpdef bint condition(Board board, Move move, PieceType piece, bint is_white):
     """ Returns if a move on the board for a certain piece is legal/

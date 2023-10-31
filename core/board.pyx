@@ -1,6 +1,7 @@
 # cython: language_level=3
 from typing import Dict, List, Optional
 import builtins
+import random
 
 cimport binary_ops_utils
 from cython cimport int, long
@@ -53,6 +54,12 @@ cdef class Board:
         self.threats = []
         self.black_pieces = [[], [], [], [], [], []]
         self.white_pieces = [[], [], [], [], [], []]
+        self.zobrist_key = 0
+        min = 0
+        max = builtins.pow(2, 64)
+        for cell in range(64):
+            for piece in range(12):
+                self.zobrist_table[cell][piece] = random.randint(min, max) 
         self.__update_distances__()
         self.__update_pawn_moves__()
         self.__update_knight_moves__()
@@ -104,10 +111,12 @@ cdef class Board:
                         self.black_pieces[piece_type].append(i * 8 + j)
                         self.board = binary_ops_utils.switch_bit(self.board, i, j, True)
                         self.black_board = binary_ops_utils.switch_bit(self.black_board, i, j, True)
+                        self.zobrist_key ^= self.zobrist_table[i * 8 + j][piece_type + 6]
                     else:
                         self.white_pieces[piece_type].append(i * 8 + j)
                         self.board = binary_ops_utils.switch_bit(self.board, i, j, True)
                         self.white_board = binary_ops_utils.switch_bit(self.white_board, i, j, True)
+                        self.zobrist_key ^= self.zobrist_table[i * 8 + j][piece_type]
 
                     j += 1
 
@@ -152,9 +161,11 @@ cdef class Board:
         if is_white:
             self.white_pieces[<int>piece].append(cell)
             self.white_board = binary_ops_utils.switch_cell_bit(self.white_board, cell, True)
+            self.zobrist_key ^= self.zobrist_table[cell][<int>piece]
         else:
             self.black_pieces[<int>piece].append(cell)
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, True)
+            self.zobrist_key ^= self.zobrist_table[cell][<int>piece + 6]
 
     cpdef void remove_cell_piece(self, unsigned long cell, PieceType piece, bint is_white):
         """ This method remove a piece from a certain cell and update the required object fields
@@ -169,9 +180,11 @@ cdef class Board:
         if is_white:
             self.white_pieces[<int>piece] = [c for c in self.white_pieces[<int>piece] if c != cell]
             self.white_board = binary_ops_utils.switch_cell_bit(self.white_board, cell, False)
+            self.zobrist_key ^= self.zobrist_table[cell][<int>piece]
         else:
             self.black_pieces[<int>piece] = [c for c in self.black_pieces[<int>piece] if c != cell]
             self.black_board = binary_ops_utils.switch_cell_bit(self.black_board, cell, False)
+            self.zobrist_key ^= self.zobrist_table[cell][<int>piece + 6]
 
     cpdef list get_pieces_dict(self, bint is_white):
         """ This function returns the dictionary of the cells in which certain piece type is found.
@@ -508,6 +521,30 @@ cdef class Board:
             return 0
 
         return self.get_moves_by_piece(cell, is_white, piece, for_attacks)
+
+
+    cpdef unsigned long long get_captures_by_cell(self, unsigned long cell, bint is_white):
+        """ Returns all pseudo-legal captures from a cell for a certain color.
+
+        :param cell: The cell's index
+        :param is_white: The cell's color
+        :param for_attacks: flag for whether this is used for checking king's move
+        :return: Bitmap of all pseudo-legal captures
+        """
+        cdef PieceType piece
+        cdef unsigned long long board
+        cdef unsigned long long attacks
+        if self.is_cell_empty(cell):
+            return 0
+
+        board = self.black_board if is_white else self.white_board
+        piece = self.get_cell_type(cell)
+        attacks = self.attackers_maps[<int>piece][0] if is_white else self.attackers_maps[<int>piece][1]
+        if attacks & board == 0:
+            return 0
+
+        return self.get_moves_by_piece(cell, is_white, piece) & board
+
 
     cpdef void __update_attacker__(self, bint is_white):
         """ This is a method to update the attacker's bitmaps and is for internal use only.

@@ -27,6 +27,7 @@ cdef class Move:
 cpdef bint is_pseudo_legal(Board board, Move move)
 cpdef bint is_threatened(Board board, bint is_white, unsigned long cell)
 cpdef list get_all_legal_moves(Board board, unsigned long cell, PieceType piece, bint is_white)
+cpdef list get_all_legal_captures(Board board, unsigned long cell, PieceType piece, bint is_white)
 cpdef bint condition(Board board, Move move, PieceType piece, bint is_white)
 cpdef list get_threats(Board board)
 cpdef bint is_under_check(Board board)
