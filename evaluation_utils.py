@@ -255,3 +255,5 @@ def move_prediction(board: Board, move: Move) -> float:
         val -= middle_game_value[piece]
 
     return val
+
+init_tables()
