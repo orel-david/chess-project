@@ -15,6 +15,7 @@ cdef class Entry:
         self.depth = depth
         self.node_type = node_type
         self.best = best
+        self.is_white = False
 
 cdef class Transposition_table:
     """
@@ -39,7 +40,7 @@ cdef class Transposition_table:
         
         return entry
 
-    cpdef void store_entry(self, unsigned long long key, float score, int depth, int node_type, Move best):
+    cpdef void store_entry(self, unsigned long long key, float score, int depth, int node_type, Move best, bint is_white):
         cdef int index
 
         index = key % self.num_entries
@@ -48,3 +49,4 @@ cdef class Transposition_table:
         self.table[index].depth = depth
         self.table[index].node_type = node_type
         self.table[index].best = best
+        self.table[index].is_white = is_white

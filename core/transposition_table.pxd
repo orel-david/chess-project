@@ -11,6 +11,8 @@ cdef class Entry:
     # 0 is exact value, 1 is lowerbound, 2 is upperbound
     cdef public int node_type
     cdef public Move best
+    # Used for perspective
+    cdef public bint is_white
 
 cdef class Transposition_table:
     """
@@ -20,4 +22,4 @@ cdef class Transposition_table:
     cdef int num_entries
 
     cpdef Entry get_entry(self, unsigned long long node_zobrist_key)
-    cpdef void store_entry(self, unsigned long long key, float score, int depth, int node_type, Move best)
+    cpdef void store_entry(self, unsigned long long key, float score, int depth, int node_type, Move best, bint is_white)

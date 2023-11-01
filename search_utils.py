@@ -71,18 +71,19 @@ def search_position(board: Board, depth: int, alpha: int, beta: int) -> float:
     entry = search_table.get_entry(board.zobrist_key)
     
     if entry is not None and entry.zobrist_key == board.zobrist_key and entry.depth >= depth:
+        score = entry.score if entry.is_white == board.is_white else -entry.score
         if entry.node_type == 0:
-            return entry.score
-        if entry.node_type == 1 and entry.score >= beta:
-            alpha = max(entry.score, alpha)
-        elif entry.node_type == 2 and entry.score <= alpha:
-            beta = min(beta, entry.score)
+            return score
+        if entry.node_type == 1 and score >= beta:
+            alpha = max(score, alpha)
+        elif entry.node_type == 2 and score <= alpha:
+            beta = min(beta, score)
             
         if alpha >= beta:
             return beta
             
     if depth <= 0:
-        return quiescence_search(board, 2, alpha, beta)
+        return quiescence_search(board, 4, alpha, beta)
     
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
@@ -112,7 +113,7 @@ def search_position(board: Board, depth: int, alpha: int, beta: int) -> float:
             best_move = move
 
         if score >= beta:
-            search_table.store_entry(board.zobrist_key, beta, depth, 1, move)
+            search_table.store_entry(board.zobrist_key, beta, depth, 1, move, board.is_white)
             return beta
 
         if score > alpha:
@@ -120,7 +121,7 @@ def search_position(board: Board, depth: int, alpha: int, beta: int) -> float:
             alpha = score
             best_move = move
 
-    search_table.store_entry(board.zobrist_key, best_val, depth, bound, best_move)
+    search_table.store_entry(board.zobrist_key, best_val, depth, bound, best_move, board.is_white)
 
 
     return alpha
@@ -138,10 +139,11 @@ def search_move(board: Board, depth: int) -> core.Move:
     entry = search_table.get_entry(board.zobrist_key)
     
     if entry is not None and entry.zobrist_key == board.zobrist_key and entry.depth >= depth:
-        if entry.node_type == 0:
-            return entry.best
-        elif entry.node_type == 1:
-            best_val = entry.score
+        if entry.is_white == board.is_white:
+            if entry.node_type == 0:
+                return entry.best
+            elif entry.node_type == 1:
+                best_val = entry.score
         
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
@@ -164,6 +166,6 @@ def search_move(board: Board, depth: int) -> core.Move:
             best_move = move
             best_val = val
             
-    search_table.store_entry(board.zobrist_key, best_val, depth, 0, best_move)
+    search_table.store_entry(board.zobrist_key, best_val, depth, 0, best_move, board.is_white)
 
     return best_move
