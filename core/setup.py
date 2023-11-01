@@ -23,6 +23,10 @@ ext_modules = [
         name="core_utils",
         sources=["core_utils.pyx"],
     ),
+    Extension(
+        name="transposition_table",
+        sources=["transposition_table.pyx"],
+    ),
 ]
 
 setup(
