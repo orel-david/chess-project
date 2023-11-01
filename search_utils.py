@@ -95,6 +95,8 @@ def search_position(board: Board, depth: int, alpha: int, beta: int) -> float:
             return float('-inf')
         return 0
 
+    moves = list(filter(lambda move: evaluation_utils.move_prediction(board, move), moves))
+
     best_move = None
     best_val = float("-inf")
     score = 0
@@ -152,7 +154,7 @@ def search_move(board: Board, depth: int) -> core.Move:
         return None
 
     best_move = None
-
+    moves = list(filter(lambda move: evaluation_utils.move_prediction(board, move), moves))
     for move in moves:
         core.core_utils.make_move(board, move, True)
         val = -search_position(board, depth - 1, best_val, float("inf"))
