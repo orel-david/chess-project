@@ -1,5 +1,3 @@
-from typing import Tuple, List
-
 from core import Move
 from core import Board
 from core import PieceType
@@ -204,13 +202,13 @@ def evaluate(board: Board) -> float:
 
     index = 1 if board.is_white else 0
     middle_game_score = middle_game_eval[index] - middle_game_eval[1 - index]
-    endgame_score = endgame_eval[index] - endgame_eval[1 - index] + mopup_eval(board)
+    endgame_score = endgame_eval[index] - endgame_eval[1 - index] + mop_up_eval(board)
     if phase > 24:
         phase = 24
     return (middle_game_score * phase + endgame_score * (24 - phase)) / init_phase
 
 
-def mopup_eval(board: Board) -> float:
+def mop_up_eval(board: Board) -> float:
     """ This function uses mop up evaluation to encourage a more aggressive behaviour at the endgame
 
     :param board: The position which is evaluated
@@ -255,5 +253,6 @@ def move_prediction(board: Board, move: Move) -> float:
         val -= middle_game_value[piece]
 
     return val
+
 
 init_tables()

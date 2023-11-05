@@ -1,10 +1,10 @@
-import time
 import core
 from core import Board
 from core import Transposition_table
 import evaluation_utils
 
 search_table = Transposition_table(0x8000000)
+
 
 def count_nodes(gboard: Board, depth: int) -> int:
     """ The method counts all the nodes from a certain position up to a certain depth
@@ -30,35 +30,35 @@ def count_nodes(gboard: Board, depth: int) -> int:
     return sum_options
 
 
-def quiescence_search(board: Board, depth_limit: int, alpha: int, beta:int) -> float:
-    eval = evaluation_utils.evaluate(board)
-    
+def quiescence_search(board: Board, depth_limit: int, alpha: float, beta: float) -> float:
+    position_eval = evaluation_utils.evaluate(board)
+
     if depth_limit == 0:
-        return eval
-    if eval >= beta:
+        return position_eval
+    if position_eval >= beta:
         return beta
-    if eval > alpha:
-        alpha = eval
-        
+    if position_eval > alpha:
+        alpha = position_eval
+
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
     for piece in board.pieces_dict.values():
         for cell in piece_dict[piece]:
             moves += core.core_utils.get_all_legal_captures(board, cell, piece, board.is_white)
-            
+
     for move in moves:
         core.core_utils.make_move(board, move, True)
-        eval = -quiescence_search(board, depth_limit - 1, -beta, -alpha)
+        position_eval = -quiescence_search(board, depth_limit - 1, -beta, -alpha)
         core.core_utils.undo_move(board, move)
-        if eval >= beta:
+        if position_eval >= beta:
             return beta
-        if eval > alpha:
-            alpha = eval
-    
+        if position_eval > alpha:
+            alpha = position_eval
+
     return alpha
 
 
-def search_position(board: Board, depth: int, alpha: int, beta: int) -> float:
+def search_position(board: Board, depth: int, alpha: float, beta: float) -> float:
     """ This method uses alpha beta pruning to estimate how well is the position looking to a certain depth.
 
     :param board: The position
@@ -69,22 +69,23 @@ def search_position(board: Board, depth: int, alpha: int, beta: int) -> float:
     """
     global search_table
     entry = search_table.get_entry(board.zobrist_key)
-    
-    if entry is not None and entry.zobrist_key == board.zobrist_key and entry.depth >= depth:
-        score = entry.score if entry.is_white == board.is_white else -entry.score
+    valid = (entry is not None) and (entry.is_white == board.is_white)
+
+    if valid and entry.zobrist_key == board.zobrist_key and entry.depth >= depth:
+        score = entry.score
         if entry.node_type == 0:
             return score
         if entry.node_type == 1 and score >= beta:
             alpha = max(score, alpha)
         elif entry.node_type == 2 and score <= alpha:
             beta = min(beta, score)
-            
+
         if alpha >= beta:
             return beta
-            
+
     if depth <= 0:
-        return quiescence_search(board, 4, alpha, beta)
-    
+        return quiescence_search(board, 3, alpha, beta)
+
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
     for piece in board.pieces_dict.values():
@@ -96,11 +97,10 @@ def search_position(board: Board, depth: int, alpha: int, beta: int) -> float:
             return float('-inf')
         return 0
 
-    moves = list(filter(lambda move: evaluation_utils.move_prediction(board, move), moves))
+    moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m))
 
     best_move = None
     best_val = float("-inf")
-    score = 0
     bound = 2
     for move in moves:
         core.core_utils.make_move(board, move, True)
@@ -123,7 +123,6 @@ def search_position(board: Board, depth: int, alpha: int, beta: int) -> float:
 
     search_table.store_entry(board.zobrist_key, best_val, depth, bound, best_move, board.is_white)
 
-
     return alpha
 
 
@@ -137,14 +136,11 @@ def search_move(board: Board, depth: int) -> core.Move:
     best_val = float("-inf")
     global search_table
     entry = search_table.get_entry(board.zobrist_key)
-    
+
     if entry is not None and entry.zobrist_key == board.zobrist_key and entry.depth >= depth:
-        if entry.is_white == board.is_white:
-            if entry.node_type == 0:
-                return entry.best
-            elif entry.node_type == 1:
-                best_val = entry.score
-        
+        if entry.node_type == 0 and entry.is_white == board.is_white:
+            return entry.best
+
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
 
@@ -156,7 +152,7 @@ def search_move(board: Board, depth: int) -> core.Move:
         return None
 
     best_move = None
-    moves = list(filter(lambda move: evaluation_utils.move_prediction(board, move), moves))
+    moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m))
     for move in moves:
         core.core_utils.make_move(board, move, True)
         val = -search_position(board, depth - 1, best_val, float("inf"))
@@ -165,7 +161,6 @@ def search_move(board: Board, depth: int) -> core.Move:
         if val >= best_val:
             best_move = move
             best_val = val
-            
-    search_table.store_entry(board.zobrist_key, best_val, depth, 0, best_move, board.is_white)
 
+    search_table.store_entry(board.zobrist_key, best_val, depth, 0, best_move, board.is_white)
     return best_move
