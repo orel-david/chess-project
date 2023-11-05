@@ -137,7 +137,7 @@ cpdef list get_all_legal_captures(Board board, unsigned long cell, PieceType pie
     return moves
 
 cpdef bint condition(Board board, Move move, PieceType piece, bint is_white):
-    """ Returns if a move on the board for a certain piece is legal/
+    """ Returns if a move on the board for a certain piece is legal.
 
     :param board: The board we check
     :param move: The move we validate
