@@ -1,3 +1,4 @@
+import time
 import core
 from core import Board
 from core import Transposition_table
@@ -97,7 +98,7 @@ def search_position(board: Board, depth: int, alpha: float, beta: float) -> floa
             return float('-inf')
         return 0
 
-    moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m))
+    moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m), reverse=True)
 
     best_move = None
     best_val = float("-inf")
@@ -126,13 +127,15 @@ def search_position(board: Board, depth: int, alpha: float, beta: float) -> floa
     return alpha
 
 
-def search_move(board: Board, depth: int) -> core.Move:
+def search_move(board: Board, time_limit=4) -> core.Move:
     """ This method returns the best move by searching to a certain depth
 
     :param board: The position in which we search
-    :param depth: The depth of the search
+    :param time_limit: The time allocated for the search in the position
     :return: The move which according to the evaluate metric is the best.
     """
+    moves_values = {}
+    start_time = time.time()
     best_val = float("-inf")
     global search_table
     entry = search_table.get_entry(board.zobrist_key)
@@ -152,15 +155,26 @@ def search_move(board: Board, depth: int) -> core.Move:
         return None
 
     best_move = None
-    moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m))
-    for move in moves:
-        core.core_utils.make_move(board, move, True)
-        val = -search_position(board, depth - 1, best_val, float("inf"))
-        core.core_utils.undo_move(board, move)
+    moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m), reverse=True)
+    depth = 1
+    
+    while (time.time() - start_time) < time_limit:
+        for move in moves:
+            core.core_utils.make_move(board, move, True)
+            val = -search_position(board, depth - 1, best_val, float("inf"))
+            core.core_utils.undo_move(board, move)
 
-        if val >= best_val:
-            best_move = move
-            best_val = val
+            moves_values[move] = val
+            if val >= best_val:
+                best_move = move
+                best_val = val
+                
+            if time.time() - start_time >= time_limit:
+                search_table.store_entry(board.zobrist_key, best_val, depth, 0, best_move, board.is_white)
+                return best_move
+            
+        moves.sort(key=lambda m: moves_values[m], reverse=True)
+        depth += 1
 
     search_table.store_entry(board.zobrist_key, best_val, depth, 0, best_move, board.is_white)
     return best_move

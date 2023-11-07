@@ -344,12 +344,6 @@ class GUI:
             core.core_utils.make_move(board, user_input)
             self.white = not self.white
             self.draw_board(board)
-            start = time.time()
-            move = search_utils.search_move(board, 4)
-            end = time.time()
-            print(end - start)
-            core.core_utils.make_move(board, move)
-            self.white = not self.white
 
         except NonLegal:
             print("Illegal move, try again")
