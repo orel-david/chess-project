@@ -20,7 +20,7 @@ def convert_move_to_uci(move: Move) -> str:
     return convert_cell_to_algebraic_notation(move.cell) + convert_cell_to_algebraic_notation(move.target) + suffix
 
 
-def convert_uci_to_move(notation: str, board: Board) -> Move:
+def convert_algebraic_to_move(notation: str, board: Board) -> Move:
     """ This function decode algebraic notation of move to a Move instance if possible
 
     :param notation: The string of which represent the algebraic notation
@@ -95,3 +95,47 @@ def convert_cell_to_algebraic_notation(cell: int) -> str:
     """
     row, col = (int(cell / 8), cell % 8)
     return (chr(col + ord('a'))) + str(row + 1)
+
+
+def convert_move_algebraic(board: Board, move: Move) -> str:
+    if move.castle:
+        if move.is_king_side:
+            return "o-o"
+        return "o-o-o"
+
+    piece_type = board.get_cell_type(move.cell)
+    pieces = board.get_pieces_dict(board.is_white)
+    notation = '' if piece_type == PieceType.PAWN else pieces_dict[piece_type].upper()
+    rank, file = translate_cell_to_row_col(move.cell)
+    specify_file = False
+    specify_rank = False
+
+    for cell in pieces[piece_type]:
+        if cell == move.cell or piece_type == PieceType.PAWN:
+            continue
+
+        tmp_rank, tmp_file = translate_cell_to_row_col(cell)
+
+        tmp_move = Move(cell, move.target)
+        if move.promotion != PieceType.EMPTY:
+            tmp_move.set_promotion(move.promotion)
+
+        is_legal = core_utils.is_pseudo_legal(board, tmp_move) and core_utils.condition(board, tmp_move, piece_type,
+                                                                                        board.is_white)
+        if is_legal:
+            if tmp_file != file:
+                specify_file = True
+            elif tmp_rank != rank:
+                specify_rank = True
+
+    is_capture = not board.is_cell_empty(move.target)
+    if specify_file or (piece_type == PieceType.PAWN and is_capture):
+        notation = notation + (chr(file + ord('a')))
+    if specify_rank:
+        notation = notation + str(rank + 1)
+
+    if is_capture:
+        notation = notation + 'x'
+
+    notation = notation + convert_cell_to_algebraic_notation(move.target)
+    return notation if move.promotion == PieceType.EMPTY else notation + "=" + pieces_dict[move.promotion].upper()
