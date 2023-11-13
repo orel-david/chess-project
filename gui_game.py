@@ -22,7 +22,6 @@ def game():
     """
     gameboard = Board()
     gui = GUI(gameboard.is_white)
-    gui.draw_board(gameboard)
     while not (core.core_utils.is_mate(gameboard, gui.is_white()) or core.core_utils.check_stalemate(gameboard)):
         gui.handle_events(gameboard)
 

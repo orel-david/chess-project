@@ -1,7 +1,7 @@
 import search_utils
-from opening import opener
+from opening import Opener
 from core import Board, Move
-from UCI import convert_move_algebraic
+from UCI import convert_move_algebraic, convert_algebraic_to_move
 
 
 class Bot:
@@ -10,7 +10,7 @@ class Bot:
     """
 
     def __init__(self):
-        self.opener = opener.Opener()
+        self.opener = Opener()
         self.opening = True
 
     def think(self, board: Board) -> Move:
@@ -20,7 +20,12 @@ class Bot:
         :return: The move which the bot thinks is the best
         """
         if self.opening:
-            move = self.opener.get_move()
+            move_notation = self.opener.get_move()
+            if move_notation != "":
+                move = convert_algebraic_to_move(move_notation, board) 
+            else:
+                move = None
+                
             if move is not None:
                 self.opener.add_to_line(convert_move_algebraic(board, move))
                 return move

@@ -46,8 +46,9 @@ def convert_algebraic_to_move(notation: str, board: Board) -> Move:
     target_file = -1
     target_rank = -1
     promotion = PieceType.EMPTY
+    start = 0 if piece_type == PieceType.PAWN else 1
 
-    for c in notation[1:]:
+    for c in notation[start:]:
         if c == 'x' or c == '=' or c == '+':
             pass
         elif c.isalpha():

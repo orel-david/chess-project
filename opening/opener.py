@@ -11,7 +11,7 @@ class Opener:
 
     def __init__(self):
         self.ply = 0
-        with open(self.game_database, 'r') as in_file:
+        with open(self.database_path, 'r') as in_file:
             self.games = in_file.readlines()
         self.amount = len(self.games)
         self.line = ''
