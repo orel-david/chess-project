@@ -27,12 +27,12 @@ def convert_algebraic_to_move(notation: str, board: Board) -> Move:
     :param board: The board of the game
     :return: Corresponding move
     """
-    if notation == 'o-o':
+    if (notation == 'o-o') or (notation == 'O-O'):
         move = Move(0, 0)
         move.set_castle(True)
         return move
 
-    if notation == 'o-o-o':
+    if (notation == 'o-o-o') or (notation == 'O-O-O'):
         move = Move(0, 0)
         move.set_castle(False)
         return move
