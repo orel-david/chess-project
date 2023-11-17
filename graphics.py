@@ -393,6 +393,8 @@ class GUI:
 
             if self.bot_mode:
                 bot_move = self.bot.think(board)
+                if not bot_move:
+                    return
                 core.core_utils.make_move(board, bot_move)
                 self.white = not self.white
             self.draw_board(board)
