@@ -1,3 +1,5 @@
+import time
+
 import search_utils
 from opening import Opener
 from core import Board, Move
@@ -19,6 +21,7 @@ class Bot:
         :param board: The board instance that represents the position
         :return: The move which the bot thinks is the best
         """
+        start = time.time()
         if self.opening:
             move_notation = self.opener.get_move()
             if move_notation != "":
@@ -27,10 +30,14 @@ class Bot:
                 move = None
                 
             if move is not None:
-                self.opener.add_to_line(convert_move_algebraic(board, move))
-                return move
+                print(move_notation)
+                self.opener.add_to_line(move_notation)
+                print(time.time() - start)
 
-        return search_utils.search_move(board)
+                return move
+        move = search_utils.search_move(board)
+        print(time.time() - start)
+        return move
 
     def update_line(self, board: Board, move: Move) -> None:
         """ This method updates the move which was made by the opponent, for now only for the opener
