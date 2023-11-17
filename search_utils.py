@@ -71,21 +71,22 @@ def search_position(board: Board, depth: int, alpha: float, beta: float) -> floa
     global search_table
     entry = search_table.get_entry(board.zobrist_key)
     valid = (entry is not None) and (entry.is_white == board.is_white)
-
+    alpha_origin = alpha
+    
     if valid and entry.zobrist_key == board.zobrist_key and entry.depth >= depth:
         score = entry.score
         if entry.node_type == 0:
             return score
-        if entry.node_type == 1 and score >= beta:
+        if entry.node_type == 1:
             alpha = max(score, alpha)
-        elif entry.node_type == 2 and score <= alpha:
+        elif entry.node_type == 2:
             beta = min(beta, score)
 
         if alpha >= beta:
             return beta
 
     if depth <= 0:
-        return quiescence_search(board, 3, alpha, beta)
+        return quiescence_search(board, 4, alpha, beta)
 
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
@@ -101,33 +102,27 @@ def search_position(board: Board, depth: int, alpha: float, beta: float) -> floa
     moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m), reverse=True)
 
     best_move = None
-    best_val = float("-inf")
-    bound = 2
     for move in moves:
         core.core_utils.make_move(board, move, True)
         extra = 1 if board.position_in_check else 0
         score = -search_position(board, depth - 1 + extra, -beta, -alpha)
         core.core_utils.undo_move(board, move)
 
-        if best_val <= score:
-            best_val = score
-            best_move = move
-
         if score >= beta:
             search_table.store_entry(board.zobrist_key, beta, depth, 1, move, board.is_white)
             return beta
 
         if score > alpha:
-            bound = 0
             alpha = score
             best_move = move
 
-    search_table.store_entry(board.zobrist_key, best_val, depth, bound, best_move, board.is_white)
+    bound = 2 if alpha_origin >= alpha else 0
+    search_table.store_entry(board.zobrist_key, alpha, depth, bound, best_move, board.is_white)
 
     return alpha
 
 
-def search_move(board: Board, time_limit=4) -> core.Move:
+def search_move(board: Board, time_limit=4, min_depth = 3) -> core.Move:
     """ This method returns the best move by searching to a certain depth
 
     :param board: The position in which we search
@@ -138,11 +133,6 @@ def search_move(board: Board, time_limit=4) -> core.Move:
     start_time = time.time()
     best_val = float("-inf")
     global search_table
-    entry = search_table.get_entry(board.zobrist_key)
-
-    if entry is not None and entry.zobrist_key == board.zobrist_key and entry.depth >= depth:
-        if entry.node_type == 0 and entry.is_white == board.is_white:
-            return entry.best
 
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
@@ -156,12 +146,12 @@ def search_move(board: Board, time_limit=4) -> core.Move:
 
     best_move = None
     moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m), reverse=True)
-    depth = 1
+    depth = min_depth
     
     while (time.time() - start_time) < time_limit:
         for move in moves:
             core.core_utils.make_move(board, move, True)
-            val = -search_position(board, depth - 1, best_val, float("inf"))
+            val = -search_position(board, depth - 1, float("-inf"), -best_val)
             core.core_utils.undo_move(board, move)
 
             moves_values[move] = val
@@ -169,8 +159,11 @@ def search_move(board: Board, time_limit=4) -> core.Move:
                 best_move = move
                 best_val = val
                 
+            if best_val == float("inf"):
+                return best_move
+            
             if time.time() - start_time >= time_limit:
-                search_table.store_entry(board.zobrist_key, best_val, depth, 0, best_move, board.is_white)
+                search_table.store_entry(board.zobrist_key, best_val, depth, 1, move, board.is_white)
                 return best_move
             
         moves.sort(key=lambda m: moves_values[m], reverse=True)
