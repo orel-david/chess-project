@@ -59,7 +59,7 @@ def quiescence_search(board: Board, depth_limit: int, alpha: float, beta: float)
     return alpha
 
 
-def search_position(board: Board, depth: int, alpha: float, beta: float) -> float:
+def search_position(board: Board, depth: int, alpha: float, beta: float, root_distance=0) -> float:
     """ This method uses alpha beta pruning to estimate how well is the position looking to a certain depth.
 
     :param board: The position
@@ -96,7 +96,7 @@ def search_position(board: Board, depth: int, alpha: float, beta: float) -> floa
 
     if not moves:
         if board.position_in_check:
-            return float('-inf')
+            return float('-inf') + root_distance
         return 0
 
     moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m), reverse=True)
@@ -105,7 +105,7 @@ def search_position(board: Board, depth: int, alpha: float, beta: float) -> floa
     for move in moves:
         core.core_utils.make_move(board, move, True)
         extra = 1 if board.position_in_check else 0
-        score = -search_position(board, depth - 1 + extra, -beta, -alpha)
+        score = -search_position(board, depth - 1 + extra, -beta, -alpha, root_distance + 1)
         core.core_utils.undo_move(board, move)
 
         if score >= beta:
@@ -155,7 +155,7 @@ def search_move(board: Board, time_limit=4, min_depth = 3) -> core.Move:
             core.core_utils.undo_move(board, move)
 
             moves_values[move] = val
-            if val >= best_val:
+            if val > best_val:
                 best_move = move
                 best_val = val
                 
