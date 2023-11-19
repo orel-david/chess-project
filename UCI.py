@@ -27,15 +27,16 @@ def convert_algebraic_to_move(notation: str, board: Board) -> Move:
     :param board: The board of the game
     :return: Corresponding move
     """
-    if (notation == 'o-o') or (notation == 'O-O'):
-        move = Move(0, 0)
-        move.set_castle(True)
-        return move
+    castling_moves = core_utils.get_castle_moves(board, board.is_white)
+    if notation.lower().startswith("o-o"):
+        for move in castling_moves:
+            if move.is_king_side:
+                return move
 
-    if (notation == 'o-o-o') or (notation == 'O-O-O'):
-        move = Move(0, 0)
-        move.set_castle(False)
-        return move
+    if notation.lower().startswith("o-o-o"):
+        for move in castling_moves:
+            if not move.is_king_side:
+                return move
 
     is_white = board.is_white
     pieces = board.get_pieces_dict(is_white)
@@ -101,8 +102,8 @@ def convert_cell_to_algebraic_notation(cell: int) -> str:
 def convert_move_algebraic(board: Board, move: Move) -> str:
     if move.castle:
         if move.is_king_side:
-            return "o-o"
-        return "o-o-o"
+            return "O-O"
+        return "O-O-O"
 
     piece_type = board.get_cell_type(move.cell)
     pieces = board.get_pieces_dict(board.is_white)
