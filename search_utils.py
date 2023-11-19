@@ -41,6 +41,9 @@ def quiescence_search(board: Board, depth_limit: int, alpha: float, beta: float)
     if position_eval > alpha:
         alpha = position_eval
 
+    if core.core_utils.check_stalemate(board):
+        return 0
+    
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
     for piece in board.pieces_dict.values():
@@ -87,6 +90,9 @@ def search_position(board: Board, depth: int, alpha: float, beta: float, root_di
 
     if depth <= 0:
         return quiescence_search(board, 4, alpha, beta)
+
+    if core.core_utils.check_stalemate(board):
+        return 0
 
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []

@@ -27,6 +27,10 @@ ext_modules = [
         name="transposition_table",
         sources=["transposition_table.pyx"],
     ),
+    Extension(
+        name="repetition_table",
+        sources=["repetition_table.pyx"],
+    ),
 ]
 
 setup(

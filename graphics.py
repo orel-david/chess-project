@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 import pygame
 
 import core
-from core import PieceType, NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal, Board, Move
+from core import PieceType, NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal, Board, Move, Repetition_table
 from bot import Bot
 
 
@@ -58,6 +58,7 @@ class GUI:
         self.moves = None
         self.threats = []
         self.bot = Bot()
+        self.repetition_table = Repetition_table(0x1000000)
         self.start_page = True
         self.bot_mode = False
         pygame.display.set_caption("Chess game")
@@ -379,6 +380,14 @@ class GUI:
         """
         return core.core_utils.get_castle_moves(board, self.is_white())
 
+    def is_repetition(self, board: Board) -> bool:
+        """ This method returns whether the position was seen three times
+
+        :param board: The current position which we check
+        :return: If the position in board was seen 3 times already
+        """
+        return self.repetition_table.get_entry(board.zobrist_key) >= 3
+
     def make_move(self, board: Board, user_input: Move):
         """
         This method perform a move on the board.
@@ -388,6 +397,7 @@ class GUI:
                 self.bot.update_line(board, user_input)
 
             core.core_utils.make_move(board, user_input)
+            self.repetition_table.update_entry(board.zobrist_key, True)
             self.white = not self.white
             self.draw_board(board)
 
@@ -396,8 +406,9 @@ class GUI:
                 if not bot_move:
                     return
                 core.core_utils.make_move(board, bot_move)
+                self.repetition_table.update_entry(board.zobrist_key, True)
                 self.white = not self.white
-            self.draw_board(board)
+                self.draw_board(board)
 
         except NonLegal:
             print("Illegal move, try again")

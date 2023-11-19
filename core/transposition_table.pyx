@@ -17,6 +17,7 @@ cdef class Entry:
         self.best = best
         self.is_white = False
 
+
 cdef class Transposition_table:
     """
     This class represents the transposition table
@@ -28,6 +29,7 @@ cdef class Transposition_table:
         for i in range(self.num_entries):
             self.table.append(Entry(0,0,0,-1,None))
     
+
     cpdef Entry get_entry(self, unsigned long long node_zobrist_key):
         cdef int index
         cdef Entry entry
@@ -40,6 +42,7 @@ cdef class Transposition_table:
         
         return entry
 
+
     cpdef void store_entry(self, unsigned long long key, float score, int depth, int node_type, Move best, bint is_white):
         cdef int index
 
@@ -50,3 +53,4 @@ cdef class Transposition_table:
         self.table[index].node_type = node_type
         self.table[index].best = best
         self.table[index].is_white = is_white
+        

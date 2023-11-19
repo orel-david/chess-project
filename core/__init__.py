@@ -6,3 +6,4 @@ from .piece import PieceType
 from .core_utils import Move
 from .chess_exceptions import NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal
 from .transposition_table import Entry, Transposition_table
+from .repetition_table import Repetition_table
