@@ -4,6 +4,7 @@ import builtins
 import random
 
 cimport binary_ops_utils
+from repetition_table cimport Repetition_table
 from cython cimport int, long
 from .mask_utils import Masks
 from piece cimport PieceType
@@ -60,6 +61,7 @@ cdef class Board:
         for cell in range(64):
             for piece in range(12):
                 self.zobrist_table[cell][piece] = random.randint(min, max) 
+        self.repetition_table = Repetition_table(0x1000000)
         self.__update_distances__()
         self.__update_pawn_moves__()
         self.__update_knight_moves__()

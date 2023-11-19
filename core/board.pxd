@@ -1,5 +1,6 @@
 from mask_utils cimport Masks
 from piece cimport PieceType
+from repetition_table cimport Repetition_table
 
 cdef class Board:
     """
@@ -37,6 +38,7 @@ cdef class Board:
     cdef public list threats
     cdef public unsigned long long zobrist_key
     cdef public unsigned long long[64][12] zobrist_table
+    cdef public Repetition_table repetition_table
     cdef list[6] black_pieces
     cdef list[6] white_pieces
 

@@ -303,6 +303,7 @@ cpdef void castle(Board board, bint is_white, Move move, bint valid=False):
     board.set_cell_piece(move.target, PieceType.KING, is_white)
     board.set_cell_piece(move.target + side, PieceType.ROOK, is_white)
     board.update_round(move.target, PieceType.KING, False)
+    board.repetition_table.update_entry(board.zobrist_key, True)
 
 
 cpdef void promote(Board board, Move move):
@@ -386,6 +387,7 @@ cpdef void make_move(Board board, Move move, bint valid=True):
     board.remove_cell_piece(move.cell, piece, board.is_white)
     board.set_cell_piece(move.target, piece, board.is_white)
     board.update_round(move.target, piece, enable_en_passant)
+    board.repetition_table.update_entry(board.zobrist_key, True)
 
 
 cpdef list get_castle_moves(Board board, bint is_white):
@@ -495,6 +497,7 @@ cpdef void undo_move(Board board, Move move):
     cdef PieceType origin_piece
 
     board.castling_options = move.prev_castling
+    board.repetition_table.update_entry(board.zobrist_key, False)
 
     if move.castle:
         start_row = 8 if board.is_white else 1
