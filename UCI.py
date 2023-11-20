@@ -100,6 +100,12 @@ def convert_cell_to_algebraic_notation(cell: int) -> str:
 
 
 def convert_move_algebraic(board: Board, move: Move) -> str:
+    """ This method convert move object to algebraic notation
+
+    :param board: The board on which we play
+    :param move: The move we want to convert
+    :return: The string of the algebraic notation of move
+    """
     if move.castle:
         if move.is_king_side:
             return "O-O"

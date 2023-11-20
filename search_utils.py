@@ -43,7 +43,7 @@ def quiescence_search(board: Board, depth_limit: int, alpha: float, beta: float)
 
     if core.core_utils.check_stalemate(board) or board.repetition_table.get_entry(board.zobrist_key) >= 3:
         return 0
-    
+
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
     for piece in board.pieces_dict.values():
@@ -69,13 +69,14 @@ def search_position(board: Board, depth: int, alpha: float, beta: float, root_di
     :param depth: The depth to which we look
     :param alpha: The alpha value
     :param beta: The beta value
+    :param root_distance: The depth we already reached
     :return: The estimate of the position
     """
     global search_table
     entry = search_table.get_entry(board.zobrist_key)
     valid = (entry is not None) and (entry.is_white == board.is_white)
     alpha_origin = alpha
-    
+
     if valid and entry.zobrist_key == board.zobrist_key and entry.depth >= depth:
         score = entry.score
         if entry.node_type == 0:
@@ -128,11 +129,12 @@ def search_position(board: Board, depth: int, alpha: float, beta: float, root_di
     return alpha
 
 
-def search_move(board: Board, time_limit=4, min_depth = 3) -> core.Move:
+def search_move(board: Board, time_limit=4, min_depth=3) -> core.Move:
     """ This method returns the best move by searching to a certain depth
 
     :param board: The position in which we search
     :param time_limit: The time allocated for the search in the position
+    :param min_depth: The minimal depth of the search
     :return: The move which according to the evaluate metric is the best.
     """
     moves_values = {}
@@ -153,7 +155,7 @@ def search_move(board: Board, time_limit=4, min_depth = 3) -> core.Move:
     best_move = None
     moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m), reverse=True)
     depth = min_depth
-    
+
     while (time.time() - start_time) < time_limit:
         for move in moves:
             core.core_utils.make_move(board, move, True)
@@ -164,14 +166,14 @@ def search_move(board: Board, time_limit=4, min_depth = 3) -> core.Move:
             if val > best_val:
                 best_move = move
                 best_val = val
-                
+
             if best_val == float("inf"):
                 return best_move
-            
+
             if time.time() - start_time >= time_limit:
                 search_table.store_entry(board.zobrist_key, best_val, depth, 1, move, board.is_white)
                 return best_move
-            
+
         moves.sort(key=lambda m: moves_values[m], reverse=True)
         depth += 1
 

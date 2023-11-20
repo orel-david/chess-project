@@ -72,20 +72,20 @@ class GUI:
         self.screen.blit(text, rect)
 
         self.pve_button_text = self.font.render("PvE", True, (0, 0, 128))
-        self.pve_button_rect = pygame.Rect(5 * self.width // 8, self.height // 2, self.width //8 , self.width // 8)
-        pygame.draw.rect(self.screen,(232, 173, 114) ,self.pve_button_rect)
-        pve_text_rect = self.pve_button_text.get_rect(center = self.pve_button_rect.center)
+        self.pve_button_rect = pygame.Rect(5 * self.width // 8, self.height // 2, self.width // 8, self.width // 8)
+        pygame.draw.rect(self.screen, (232, 173, 114), self.pve_button_rect)
+        pve_text_rect = self.pve_button_text.get_rect(center=self.pve_button_rect.center)
         self.screen.blit(self.pve_button_text, pve_text_rect)
-        
+
         self.pvp_button_text = self.font.render("PvP", True, (0, 0, 128))
-        self.pvp_button_rect = pygame.Rect(self.width // 4, self.height // 2, self.width //8 , self.width // 8)
-        pygame.draw.rect(self.screen,(232, 173, 114) ,self.pvp_button_rect)
-        pvp_text_rect = self.pvp_button_text.get_rect(center = self.pvp_button_rect.center)
+        self.pvp_button_rect = pygame.Rect(self.width // 4, self.height // 2, self.width // 8, self.width // 8)
+        pygame.draw.rect(self.screen, (232, 173, 114), self.pvp_button_rect)
+        pvp_text_rect = self.pvp_button_text.get_rect(center=self.pvp_button_rect.center)
         self.screen.blit(self.pvp_button_text, pvp_text_rect)
-        
+
         pygame.display.update()
 
-    def is_white(self):
+    def is_white(self) -> bool:
         """ Returns if it's white's turn
 
         :return: True if white's turn
@@ -105,10 +105,13 @@ class GUI:
         if row > 8 or col > 8 or row < 1 or col < 1:
             return
         self.screen.blit(img, ((col - 1) * (self.width / 8), (8 - row) * (self.height / 8)))
-        
-    
+
     def cover_for_text(self, row: int):
-        rect = pygame.Rect((self.width / 8), row * (self.height / 8), 6 * (self.width / 8), self.height / 8)    
+        """ This method cover a part of a raw to draw text on
+
+        :param row: The row on which we want to write
+        """
+        rect = pygame.Rect((self.width / 8), row * (self.height / 8), 6 * (self.width / 8), self.height / 8)
         pygame.draw.rect(self.screen, (232, 173, 114), rect)
         pygame.display.update()
 
@@ -155,13 +158,13 @@ class GUI:
                             self.start_page = False
                         elif self.pvp_button_rect.collidepoint(x, y):
                             self.bot_mode = False
-                            self.start_page = False 
-                        else: 
+                            self.start_page = False
+                        else:
                             return
-                        
-                        self.draw_board(board) 
+
+                        self.draw_board(board)
                         return
-                    
+
                     col = 1 + int((x * 8) / self.width)
                     row = 8 - int((y * 8) / self.height)
 
@@ -238,9 +241,14 @@ class GUI:
                           core.translate_row_col_to_cell(row - 3 * direction, col))
 
         pygame.display.update()
-    
-    
+
     def handle_promotion(self, row: int, col: int, board: Board):
+        """ This method handle the case in which the player need to choose at promotion
+
+        :param row: The row which was clicked
+        :param col: The column which was clicked
+        :param board: The game board
+        """
         direction = 1 if self.is_white() else -1
         queen_option = 8 if self.is_white() else 1
         if col != self.move.target % 8:
@@ -267,7 +275,6 @@ class GUI:
         self.threats = core.core_utils.get_threats(board)
         for threat in self.threats:
             self.mark_check(threat)
-
 
     def set_origin(self, board: Board, row, col):
         """ This method update the screen for a new origin cell.
@@ -379,7 +386,8 @@ class GUI:
         """
         return core.core_utils.get_castle_moves(board, self.is_white())
 
-    def is_repetition(self, board: Board) -> bool:
+    @staticmethod
+    def is_repetition(board: Board) -> bool:
         """ This method returns whether the position was seen three times
 
         :param board: The current position which we check

@@ -3,11 +3,11 @@ from core import Board
 from graphics import GUI
 
 
-def determine_result(gboard: Board, is_white: bool, is_stalemate: bool):
+def determine_result(is_white: bool, is_stalemate: bool):
     """ This method receives a board of an ended game and returns the board's result.
 
-    :param gboard: The gameboard
     :param is_white: The color of the current player
+    :param is_stalemate: Whether the game ended in a stalemate
     :return: 0 if draw, 1 if white won, -1 if black won
     """
     if is_stalemate:
@@ -27,8 +27,7 @@ def game():
         gui.handle_events(gameboard)
         is_stalemate = gui.is_repetition(gameboard) or core.core_utils.check_stalemate(gameboard)
 
-
-    gui.end(determine_result(gameboard, gui.is_white(), is_stalemate))
+    gui.end(determine_result(gui.is_white(), is_stalemate))
 
 
 if __name__ == "__main__":

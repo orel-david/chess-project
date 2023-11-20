@@ -25,10 +25,10 @@ class Bot:
         if self.opening:
             move_notation = self.opener.get_move()
             if move_notation != "":
-                move = convert_algebraic_to_move(move_notation, board) 
+                move = convert_algebraic_to_move(move_notation, board)
             else:
                 move = None
-                
+
             if move is not None:
                 print(move_notation)
                 self.opener.add_to_line(move_notation)
