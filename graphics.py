@@ -1,10 +1,10 @@
 import sys
 from typing import Optional, Sequence
-
 import pygame
 
 import core
 from core import PieceType, NonLegal, KingSacrifice, KingUnderCheck, KingNonLegal, Board, Move
+from bot import Bot
 
 
 def create_image_dict(is_white: bool, width: int, height: int):
@@ -57,14 +57,35 @@ class GUI:
         self.move = None
         self.moves = None
         self.threats = []
+        self.bot = Bot()
+        self.start_page = True
+        self.bot_mode = False
         pygame.display.set_caption("Chess game")
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.board_image = pygame.image.load("images/empty-board.png")
         self.board_image = pygame.transform.scale(self.board_image, (self.width, self.height))
         self.screen.blit(self.board_image, (0, 0))
+        self.font = pygame.font.SysFont('chalkduster.ttf', 72)
+        text = self.font.render("Welcome to chess game", True, (0, 0, 128))
+        self.cover_for_text(1)
+        rect = text.get_rect(center=(self.width // 2, 1.5 * (self.height / 8)))
+        self.screen.blit(text, rect)
+
+        self.pve_button_text = self.font.render("PvE", True, (0, 0, 128))
+        self.pve_button_rect = pygame.Rect(5 * self.width // 8, self.height // 2, self.width // 8, self.width // 8)
+        pygame.draw.rect(self.screen, (232, 173, 114), self.pve_button_rect)
+        pve_text_rect = self.pve_button_text.get_rect(center=self.pve_button_rect.center)
+        self.screen.blit(self.pve_button_text, pve_text_rect)
+
+        self.pvp_button_text = self.font.render("PvP", True, (0, 0, 128))
+        self.pvp_button_rect = pygame.Rect(self.width // 4, self.height // 2, self.width // 8, self.width // 8)
+        pygame.draw.rect(self.screen, (232, 173, 114), self.pvp_button_rect)
+        pvp_text_rect = self.pvp_button_text.get_rect(center=self.pvp_button_rect.center)
+        self.screen.blit(self.pvp_button_text, pvp_text_rect)
+
         pygame.display.update()
 
-    def is_white(self):
+    def is_white(self) -> bool:
         """ Returns if it's white's turn
 
         :return: True if white's turn
@@ -84,6 +105,15 @@ class GUI:
         if row > 8 or col > 8 or row < 1 or col < 1:
             return
         self.screen.blit(img, ((col - 1) * (self.width / 8), (8 - row) * (self.height / 8)))
+
+    def cover_for_text(self, row: int):
+        """ This method cover a part of a raw to draw text on
+
+        :param row: The row on which we want to write
+        """
+        rect = pygame.Rect((self.width / 8), row * (self.height / 8), 6 * (self.width / 8), self.height / 8)
+        pygame.draw.rect(self.screen, (232, 173, 114), rect)
+        pygame.display.update()
 
     def draw_board(self, board: Board):
         """ This method draws the game on the screen and marks the threats in red.
@@ -119,9 +149,22 @@ class GUI:
             elif event.type == pygame.WINDOWFOCUSGAINED:
                 pygame.display.update()
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.dict['pos']
                 if event.dict['button'] == 1:
                     # In left click case we need to recognize where the user clicked.
-                    x, y = event.dict['pos']
+                    if self.start_page:
+                        if self.pve_button_rect.collidepoint(x, y):
+                            self.bot_mode = True
+                            self.start_page = False
+                        elif self.pvp_button_rect.collidepoint(x, y):
+                            self.bot_mode = False
+                            self.start_page = False
+                        else:
+                            return
+
+                        self.draw_board(board)
+                        return
+
                     col = 1 + int((x * 8) / self.width)
                     row = 8 - int((y * 8) / self.height)
 
@@ -131,32 +174,7 @@ class GUI:
 
                         # If there was a promotion move now the user choose the promotion piece.
                         if self.promotion_case:
-                            direction = 1 if self.is_white() else -1
-                            queen_option = 8 if self.is_white() else 1
-                            if col != self.move.target % 8:
-                                self.set_origin(board, row, col)
-
-                            if row == queen_option:
-                                self.move.set_promotion(PieceType.QUEEN)
-                            elif row == queen_option - direction:
-                                self.move.set_promotion(PieceType.KNIGHT)
-                            elif row == queen_option - direction * 2:
-                                self.move.set_promotion(PieceType.ROOK)
-                            elif row == queen_option - direction * 3:
-                                self.move.set_promotion(PieceType.BISHOP)
-                            else:
-                                self.set_origin(board, row, col)
-                                return
-
-                            # Now we make the move if legal and draw the board.
-                            self.promotion_case = False
-                            self.make_move(board, self.move)
-                            self.draw_board(board)
-                            self.origin = -1
-                            self.move = None
-                            self.threats = core.core_utils.get_threats(board)
-                            for threat in self.threats:
-                                self.mark_check(threat)
+                            self.handle_promotion(row, col, board)
                             return
 
                         if board.is_cell_colored(cell, self.is_white()):
@@ -208,7 +226,7 @@ class GUI:
         rectangle = pygame.Rect(col * (self.width / 8), (8 - row) * (self.height / 8),
                                 self.width / 8 + 5,
                                 self.height / 2)
-        pygame.draw.rect(self.screen, (200, 222, 255), rectangle)
+        pygame.draw.rect(self.screen, (232, 173, 114), rectangle)
 
         # draw the pieces
         row = 8 if color else 1
@@ -223,6 +241,40 @@ class GUI:
                           core.translate_row_col_to_cell(row - 3 * direction, col))
 
         pygame.display.update()
+
+    def handle_promotion(self, row: int, col: int, board: Board):
+        """ This method handle the case in which the player need to choose at promotion
+
+        :param row: The row which was clicked
+        :param col: The column which was clicked
+        :param board: The game board
+        """
+        direction = 1 if self.is_white() else -1
+        queen_option = 8 if self.is_white() else 1
+        if col != self.move.target % 8:
+            self.set_origin(board, row, col)
+
+        if row == queen_option:
+            self.move.set_promotion(PieceType.QUEEN)
+        elif row == queen_option - direction:
+            self.move.set_promotion(PieceType.KNIGHT)
+        elif row == queen_option - direction * 2:
+            self.move.set_promotion(PieceType.ROOK)
+        elif row == queen_option - direction * 3:
+            self.move.set_promotion(PieceType.BISHOP)
+        else:
+            self.set_origin(board, row, col)
+            return
+
+        # Now we make the move if legal and draw the board.
+        self.promotion_case = False
+        self.make_move(board, self.move)
+        self.draw_board(board)
+        self.origin = -1
+        self.move = None
+        self.threats = core.core_utils.get_threats(board)
+        for threat in self.threats:
+            self.mark_check(threat)
 
     def set_origin(self, board: Board, row, col):
         """ This method update the screen for a new origin cell.
@@ -315,16 +367,16 @@ class GUI:
 
         :param result: The game result from gui_game
         """
-        font = pygame.font.SysFont('chalkduster.ttf', 72)
+        self.cover_for_text(3)
+        result_color = (128, 0, 0)
         if result == 0:
-            img = font.render("Stalemate", True, (255, 0, 0))
-            self.screen.blit(img, (300, self.height / 2))
+            img = self.font.render("Stalemate", True, result_color)
         elif result == 1:
-            img = font.render('white won the game', True, (255, 0, 0))
-            self.screen.blit(img, (150, self.height / 2))
+            img = self.font.render('White won the game', True, result_color)
         else:
-            img = font.render('black won the game', True, (255, 0, 0))
-            self.screen.blit(img, (150, self.height / 2))
+            img = self.font.render('Black won the game', True, result_color)
+        rect = img.get_rect(center=(self.width // 2, 3.5 * (self.height // 8)))
+        self.screen.blit(img, rect)
         pygame.display.update()
         pygame.time.delay(2000)
 
@@ -334,14 +386,34 @@ class GUI:
         """
         return core.core_utils.get_castle_moves(board, self.is_white())
 
+    @staticmethod
+    def is_repetition(board: Board) -> bool:
+        """ This method returns whether the position was seen three times
+
+        :param board: The current position which we check
+        :return: If the position in board was seen 3 times already
+        """
+        return board.repetition_table.get_entry(board.zobrist_key) >= 3
+
     def make_move(self, board: Board, user_input: Move):
         """
         This method perform a move on the board.
         """
         try:
+            if self.bot_mode:
+                self.bot.update_line(board, user_input)
 
             core.core_utils.make_move(board, user_input)
             self.white = not self.white
+            self.draw_board(board)
+
+            if self.bot_mode:
+                bot_move = self.bot.think(board)
+                if not bot_move:
+                    return
+                core.core_utils.make_move(board, bot_move)
+                self.white = not self.white
+                self.draw_board(board)
 
         except NonLegal:
             print("Illegal move, try again")

@@ -110,9 +110,34 @@ cpdef list get_all_legal_moves(Board board, unsigned long cell, PieceType piece,
 
     return moves
 
+cpdef list get_all_legal_captures(Board board, unsigned long cell, PieceType piece, bint is_white):
+    """ Returns all the legal captures from a certain cell with a certain PieceType
+
+    :param board: The board we use
+    :param cell: The cell we check
+    :param piece: The piece type of the cell
+    :param is_white: Whether it is the turn of the white player or not
+    :return: All legal moves in the board position as a list of captures
+    """
+    cdef list moves, targets
+    cdef Move move
+    cdef unsigned long target
+
+    if board.is_cell_empty(cell) or board.is_cell_colored(cell, not is_white):
+        return []
+
+    moves = []
+    targets = binary_ops_utils.get_turned_bits(board.get_captures_by_cell(cell, is_white))
+
+    for target in targets:
+        move = Move(cell, target)
+        if condition(board, move, piece, is_white):
+            moves.append(move)
+
+    return moves
 
 cpdef bint condition(Board board, Move move, PieceType piece, bint is_white):
-    """ Returns if a move on the board for a certain piece is legal/
+    """ Returns if a move on the board for a certain piece is legal.
 
     :param board: The board we check
     :param move: The move we validate
@@ -278,6 +303,7 @@ cpdef void castle(Board board, bint is_white, Move move, bint valid=False):
     board.set_cell_piece(move.target, PieceType.KING, is_white)
     board.set_cell_piece(move.target + side, PieceType.ROOK, is_white)
     board.update_round(move.target, PieceType.KING, False)
+    board.repetition_table.update_entry(board.zobrist_key, True)
 
 
 cpdef void promote(Board board, Move move):
@@ -361,6 +387,7 @@ cpdef void make_move(Board board, Move move, bint valid=True):
     board.remove_cell_piece(move.cell, piece, board.is_white)
     board.set_cell_piece(move.target, piece, board.is_white)
     board.update_round(move.target, piece, enable_en_passant)
+    board.repetition_table.update_entry(board.zobrist_key, True)
 
 
 cpdef list get_castle_moves(Board board, bint is_white):
@@ -431,6 +458,7 @@ cpdef void fill_undo_info(Board board, Move move, PieceType enemy_type):
     move.prev_castling = board.castling_options
     move.prev_en_passant = board.en_passant_ready
     move.enemy_type = enemy_type
+    move.prev_count = board.count
 
 
 cpdef void update_castling_option(unsigned long rook_cell, Board board, bint is_white):
@@ -469,6 +497,7 @@ cpdef void undo_move(Board board, Move move):
     cdef PieceType origin_piece
 
     board.castling_options = move.prev_castling
+    board.repetition_table.update_entry(board.zobrist_key, False)
 
     if move.castle:
         start_row = 8 if board.is_white else 1
@@ -501,3 +530,4 @@ cpdef void undo_move(Board board, Move move):
         board.set_cell_piece(move.enemy_cell, move.enemy_type, board.is_white)
     board.update_round(move.enemy_cell, move.enemy_type)
     board.en_passant_ready = move.prev_en_passant
+    board.count = move.prev_count
