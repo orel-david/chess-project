@@ -207,12 +207,12 @@ def evaluate(board: Board) -> float:
     endgame_score = endgame_eval[index] - endgame_eval[1 - index] + mop_up_eval(board)
     if phase > 24:
         phase = 24
-        
+
     temp = (middle_game_score * phase + endgame_score * (24 - phase)) / init_phase
-    
+
     if test:
-        temp += king_saftey(board)
-    
+        temp += king_safety(board)
+
     return temp
 
 
@@ -235,7 +235,12 @@ def mop_up_eval(board: Board) -> float:
     return 4.7 * cmd + 1.6 * (14 - md)
 
 
-def king_saftey(board: Board)-> float:
+def king_safety(board: Board) -> float:
+    """ This function evaluate the king safety based on attacks of enemy pieces on the king
+
+    :param board: The gameboard.
+    :return: Evaluation of how safe is the player's king relative to it's opponent's king.
+    """
     white_pieces = board.get_pieces_dict(True)
     black_pieces = board.get_pieces_dict(False)
     white_king = white_pieces[PieceType.KING][0]
@@ -251,25 +256,30 @@ def king_saftey(board: Board)-> float:
                     attackers += 1
                     temp += middle_game_value[piece] / 2
                     break
-                
+
         if index == 1:
             val -= temp * attacker_weight[attackers]
         else:
             val += temp * attacker_weight[attackers]
-    return val if board.is_white else -val   
-    
-    
+    return val if board.is_white else -val
+
+
 def king_directions(cell: int) -> list[int]:
-    directions = [-7,-8,-9,-1,1,7,8,9]
+    """ This function returns a list of offset for the move the king can go to/
+
+    :param cell: The king's cell
+    :return: A list of offsets for moves
+    """
+    directions = [-7, -8, -9, -1, 1, 7, 8, 9]
     row = cell // 8
     col = cell % 8
-    
+
     if row == 0:
         directions = [d for d in directions if d >= -1]
     elif row == 7:
         directions = [d for d in directions if d <= 1]
-    
-    forbidden = []  
+
+    forbidden = []
     if col == 0:
         forbidden = [-9, -1, 7]
     elif col == 7:
