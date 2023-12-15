@@ -152,8 +152,8 @@ def search_move(board: Board, time_limit=4, min_depth=3) -> core.Move:
     if not moves:
         return None
 
-    best_move = None
     moves.sort(key=lambda m: evaluation_utils.move_prediction(board, m), reverse=True)
+    best_move = moves[0]
     depth = min_depth
 
     while (time.time() - start_time) < time_limit:

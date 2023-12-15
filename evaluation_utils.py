@@ -6,6 +6,7 @@ from core import PieceType
 middle_game_value = (82, 1025, 365, 337, 477, 0)
 endgame_value = (94, 936, 297, 281, 512, 0)
 init_phase = 24
+test = False
 
 mg_pawn_table = (
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -160,6 +161,7 @@ eg_pesto_table = (
 phase_indicator = (0, 4, 1, 1, 2, 0)
 mg_table = [[0] * 64 for _ in range(12)]
 eg_table = [[0] * 64 for _ in range(12)]
+attacker_weight = (0, 0.5, 0.75, 0.88, 0.94, 0.97, 0.99)
 
 
 def init_tables() -> None:
@@ -205,7 +207,13 @@ def evaluate(board: Board) -> float:
     endgame_score = endgame_eval[index] - endgame_eval[1 - index] + mop_up_eval(board)
     if phase > 24:
         phase = 24
-    return (middle_game_score * phase + endgame_score * (24 - phase)) / init_phase
+        
+    temp = (middle_game_score * phase + endgame_score * (24 - phase)) / init_phase
+    
+    if test:
+        temp += king_saftey(board)
+    
+    return temp
 
 
 def mop_up_eval(board: Board) -> float:
@@ -225,6 +233,50 @@ def mop_up_eval(board: Board) -> float:
     cmd = (enemy_file + enemy_rank) & 7
     md = abs(file - enemy_file) + abs(rank - enemy_rank)
     return 4.7 * cmd + 1.6 * (14 - md)
+
+
+def king_saftey(board: Board)-> float:
+    white_pieces = board.get_pieces_dict(True)
+    black_pieces = board.get_pieces_dict(False)
+    white_king = white_pieces[PieceType.KING][0]
+    black_king = black_pieces[PieceType.KING][0]
+    val = 0
+    for king, index in zip((white_king, black_king), (1, 0)):
+        temp = 0
+        attackers = 0
+        directions = king_directions(king)
+        for piece in range(5):
+            for direction in directions:
+                if ((1 << (king + direction)) & board.attackers_maps[piece][index]) != 0:
+                    attackers += 1
+                    temp += middle_game_value[piece] / 2
+                    break
+                
+        if index == 1:
+            val -= temp * attacker_weight[attackers]
+        else:
+            val += temp * attacker_weight[attackers]
+    return val if board.is_white else -val   
+    
+    
+def king_directions(cell: int) -> list[int]:
+    directions = [-7,-8,-9,-1,1,7,8,9]
+    row = cell // 8
+    col = cell % 8
+    
+    if row == 0:
+        directions = [d for d in directions if d >= -1]
+    elif row == 7:
+        directions = [d for d in directions if d <= 1]
+    
+    forbidden = []  
+    if col == 0:
+        forbidden = [-9, -1, 7]
+    elif col == 7:
+        forbidden = [-7, 1, 9]
+
+    directions = [d for d in directions if not (d in forbidden)]
+    return directions
 
 
 def move_prediction(board: Board, move: Move) -> float:
