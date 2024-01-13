@@ -32,6 +32,10 @@ def count_nodes(gboard: Board, depth: int) -> int:
 
 
 def quiescence_search(board: Board, depth_limit: int, alpha: float, beta: float) -> float:
+    
+    if core.core_utils.check_stalemate(board) or board.repetition_table.get_entry(board.zobrist_key) >= 3:
+        return 0
+
     position_eval = evaluation_utils.evaluate(board)
 
     if depth_limit == 0:
@@ -40,9 +44,6 @@ def quiescence_search(board: Board, depth_limit: int, alpha: float, beta: float)
         return beta
     if position_eval > alpha:
         alpha = position_eval
-
-    if core.core_utils.check_stalemate(board) or board.repetition_table.get_entry(board.zobrist_key) >= 3:
-        return 0
 
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []
@@ -77,6 +78,9 @@ def search_position(board: Board, depth: int, alpha: float, beta: float, root_di
     valid = (entry is not None) and (entry.is_white == board.is_white)
     alpha_origin = alpha
 
+    if core.core_utils.check_stalemate(board) or board.repetition_table.get_entry(board.zobrist_key) >= 3:
+        return 0
+
     if valid and entry.zobrist_key == board.zobrist_key and entry.depth >= depth:
         score = entry.score
         if entry.node_type == 0:
@@ -91,9 +95,6 @@ def search_position(board: Board, depth: int, alpha: float, beta: float, root_di
 
     if depth <= 0:
         return quiescence_search(board, 4, alpha, beta)
-
-    if core.core_utils.check_stalemate(board) or board.repetition_table.get_entry(board.zobrist_key) >= 3:
-        return 0
 
     piece_dict = board.get_pieces_dict(board.is_white)
     moves = []

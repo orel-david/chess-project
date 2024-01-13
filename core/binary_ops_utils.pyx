@@ -7,6 +7,39 @@ from cython cimport int, tuple, long
 cdef unsigned long long base
 base = 1
 
+cdef void init_one_counter():
+    """
+    This method initialize the one_counter array which hold how many 1's are turned in a byte integer.
+    """
+    i = 0
+    while i < 256:
+        count = 0
+        temp = i
+        while temp != 0:
+            if temp & 1 != 0:
+                count += 1
+            temp = temp >> 1
+        one_counter[i] = count
+        i += 1
+
+cpdef int count_ones(unsigned long long word):
+    """
+    Count how many bits are turned in a 64 bit integer.
+
+    :param word: The 64 bit word.
+    :return: The amount of turned bits in the word.
+    """
+    cdef int i, count
+    i = 0
+    count = 0
+
+    while i < 8:
+        count += one_counter[(word >> (8 * i)) & 0xff]
+        i += 1
+        
+    return count
+
+
 cdef unsigned long long switch_bit(unsigned long long source, unsigned long long row, unsigned long long col, bint on):
     """
     Turn on or off 1 bit in the cell coordinates.
@@ -245,3 +278,5 @@ cdef unsigned long long get_queen_moves(unsigned long long board, unsigned long 
     :return: a mask of the pseudo legal queen's moves
     """
     return get_rook_moves(board, queen_cell, masker) | get_bishop_moves(board, queen_cell, masker)
+
+init_one_counter()

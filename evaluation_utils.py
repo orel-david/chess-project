@@ -6,7 +6,6 @@ from core import PieceType
 middle_game_value = (82, 1025, 365, 337, 477, 0)
 endgame_value = (94, 936, 297, 281, 512, 0)
 init_phase = 24
-test = False
 
 mg_pawn_table = (
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -210,8 +209,8 @@ def evaluate(board: Board) -> float:
 
     temp = (middle_game_score * phase + endgame_score * (24 - phase)) / init_phase
 
-    if test:
-        temp += king_safety(board)
+    temp += king_safety(board)
+    temp += mobility_value(board, phase)
 
     return temp
 
@@ -287,6 +286,23 @@ def king_directions(cell: int) -> list[int]:
 
     directions = [d for d in directions if not (d in forbidden)]
     return directions
+
+
+def mobility_value(board: Board, phase: int) -> float:
+    """This method return the value of the mobility of the player
+
+    :param board: The current game state
+    :param phase: The phase of the game
+    :return: The value of the mobility of the game from the current player perspective
+    """
+    move_maps = board.attackers_maps
+    index = 0 if board.is_white else 1
+    enemy = 1 - index
+    knight_mobility = (move_maps[PieceType.KNIGHT][index] - move_maps[PieceType.KNIGHT][enemy]) * 4 
+    bishop_mobility = (move_maps[PieceType.BISHOP][index] - move_maps[PieceType.BISHOP][enemy]) * 5
+    rook_mobility = (move_maps[PieceType.ROOK][index] - move_maps[PieceType.ROOK][enemy])
+    rook_mobility *= 2*phase + 4*(24-phase)
+    return knight_mobility + bishop_mobility + rook_mobility
 
 
 def move_prediction(board: Board, move: Move) -> float:

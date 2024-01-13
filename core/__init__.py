@@ -1,5 +1,5 @@
 from .mask_utils import Masks
-from .binary_ops_utils import translate_cell_to_row_col, translate_row_col_to_cell
+from .binary_ops_utils import translate_cell_to_row_col, translate_row_col_to_cell, count_ones
 from .repetition_table import Repetition_table
 from .board import Board
 from . import core_utils

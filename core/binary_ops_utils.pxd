@@ -4,7 +4,10 @@ from mask_utils cimport Masks
 from cython cimport int, tuple, long
 
 cdef unsigned long long base
+cdef int[256] one_counter
 
+cdef void init_one_counter()
+cpdef int count_ones(unsigned long long word)
 cdef unsigned long long switch_bit(unsigned long long source, unsigned long long row, unsigned long long col, bint on)
 cdef unsigned long long switch_cell_bit(unsigned long long source, unsigned long cell, bint on)
 cpdef long translate_row_col_to_cell(long row, long col)
