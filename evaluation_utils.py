@@ -1,6 +1,7 @@
 from core import Move
 from core import Board
 from core import PieceType
+from core.binary_ops_utils import count_ones
 
 # Constants from https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 middle_game_value = (82, 1025, 365, 337, 477, 0)
@@ -210,7 +211,7 @@ def evaluate(board: Board) -> float:
     temp = (middle_game_score * phase + endgame_score * (24 - phase)) / init_phase
 
     temp += king_safety(board)
-    temp += mobility_value(board, phase)
+    temp += mobility_value(board)
 
     return temp
 
@@ -288,20 +289,18 @@ def king_directions(cell: int) -> list[int]:
     return directions
 
 
-def mobility_value(board: Board, phase: int) -> float:
+def mobility_value(board: Board) -> float:
     """This method return the value of the mobility of the player
 
     :param board: The current game state
-    :param phase: The phase of the game
     :return: The value of the mobility of the game from the current player perspective
     """
     move_maps = board.attackers_maps
     index = 0 if board.is_white else 1
     enemy = 1 - index
-    knight_mobility = (move_maps[PieceType.KNIGHT][index] - move_maps[PieceType.KNIGHT][enemy]) * 4 
-    bishop_mobility = (move_maps[PieceType.BISHOP][index] - move_maps[PieceType.BISHOP][enemy]) * 5
-    rook_mobility = (move_maps[PieceType.ROOK][index] - move_maps[PieceType.ROOK][enemy])
-    rook_mobility *= 2*phase + 4*(24-phase)
+    knight_mobility = (count_ones(move_maps[PieceType.KNIGHT][index]) - count_ones(move_maps[PieceType.KNIGHT][enemy])) * 4 
+    bishop_mobility = (count_ones(move_maps[PieceType.BISHOP][index]) - count_ones(move_maps[PieceType.BISHOP][enemy])) * 5
+    rook_mobility = (count_ones(move_maps[PieceType.ROOK][index]) - count_ones(move_maps[PieceType.ROOK][enemy])) * 2
     return knight_mobility + bishop_mobility + rook_mobility
 
 
