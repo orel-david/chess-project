@@ -210,7 +210,6 @@ def evaluate(board: Board) -> float:
 
     temp = (middle_game_score * phase + endgame_score * (24 - phase)) / init_phase
 
-    temp += king_safety(board)
     temp += mobility_value(board)
 
     return temp
